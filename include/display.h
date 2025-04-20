@@ -12,5 +12,5 @@
 
 extern TaskHandle_t display_update_task_handle;
 
-void initDisplay();
+void init_display();
 void display_update_task(void *pvParameters);

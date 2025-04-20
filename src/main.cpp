@@ -12,6 +12,7 @@
 //App Interfaces
 #include "ros_interface.h"
 #include "display.h"
+#include "motor_control.h"
 
 
 #ifdef LED_BUILTIN
@@ -20,17 +21,18 @@
 #define LED_PIN 13
 #endif
 
-
 void setup() {
 
 
-  initROS();
-  initDisplay();
-
+  init_ROS();
+  init_pwm();
+  init_servo();
+  init_display();
 
   // create tasks
   xTaskCreate(ros_executor_task, "ros_executor_task", 4096, NULL, 1, &ros_executor_task_handle);
   xTaskCreate(display_update_task, "display_update_task", 4096, NULL, 1, &display_update_task_handle);
+  //xTaskCreate(task_motion_control, "task_motion_control", 2048, NULL, 2, NULL);
 }
 
 void loop() {

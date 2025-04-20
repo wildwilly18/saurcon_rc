@@ -10,7 +10,7 @@ TaskHandle_t display_update_task_handle = NULL;
 // OLED display object
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, SCL_PIN, SDA_PIN, U8X8_PIN_NONE);
 
-void initDisplay(){
+void init_display(){
     // OLED setup
     u8g2.begin();
     u8g2.clearBuffer();

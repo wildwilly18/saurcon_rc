@@ -12,12 +12,17 @@
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
 
+// Types
 #include <geometry_msgs/msg/twist.h>
+#include "control_cmd_type.h"
 
 // Arduino and Pins
 #define LED_PIN 13
 #include "pins.h"
 #include <Arduino.h>
+
+// Include needed to pipe the RTOS QUEUE of the CMDs
+#include "motor_control.h"
 
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
@@ -40,7 +45,7 @@ extern rcl_node_t node;
 extern rcl_timer_t timer;
 
 //Function
-void initROS();
+void init_ROS();
 void error_loop();
 void subscription_callback(const void * msgin);
 void ros_executor_task(void *pvParameters);

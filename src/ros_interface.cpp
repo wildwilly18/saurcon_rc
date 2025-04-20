@@ -1,6 +1,5 @@
 #include "ros_interface.h"
 
-
 SemaphoreHandle_t controlDataMutex;
 
 // Define the task handle
@@ -11,15 +10,16 @@ rcl_subscription_t subscriber;
 geometry_msgs__msg__Twist msg;
 rclc_executor_t executor;
 rclc_support_t support;
-rcl_allocator_t allocator;
+rcl_allocator_t ros_allocator;
 rcl_node_t node;
 rcl_timer_t timer;
 
+ControlCommand cmd;
 
 float velCommand = 0.0;
 float steerCommand = 0.0;
 
-void initROS(){
+void init_ROS(){
 
     //Setup control data mutex
     controlDataMutex = xSemaphoreCreateMutex();
@@ -37,10 +37,10 @@ void initROS(){
     
     delay(2000);
 
-    allocator = rcl_get_default_allocator();
+    ros_allocator = rcl_get_default_allocator();
 
     //create init_options
-    RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
+    RCCHECK(rclc_support_init(&support, 0, NULL, &ros_allocator));
 
     // create node
     RCCHECK(rclc_node_init_default(&node, "saurcon_rc", "", &support));
@@ -53,7 +53,7 @@ void initROS(){
         "ctrl_output"));
 
     // create executor
-    RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
+    RCCHECK(rclc_executor_init(&executor, &support.context, 1, &ros_allocator));
     RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
 
 }
@@ -76,6 +76,7 @@ void error_loop(){
       // Extract the velocity and steering commands from the message
       velCommand = msg->linear.x;
       steerCommand = msg->angular.z;
+
       xSemaphoreGive(controlDataMutex);
     };
   

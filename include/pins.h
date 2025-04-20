@@ -2,10 +2,8 @@
 #define PINS_H
 
 // Servo Out Pin
-#define ESC_PIN 3
-
-
-
+#define ESC_PIN    3
+#define SERVO_PIN  4
 
 //Pin for knob
 #define KNOB_IN A13
