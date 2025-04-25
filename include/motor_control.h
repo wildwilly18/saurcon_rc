@@ -4,8 +4,14 @@
 #include <ESP32Servo.h>
 #include <algorithm>
 
+//Include FreeRTOS
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+
 #include "pins.h"
 #include "control_cmd_type.h"
+
+
 
 using namespace std;
 
@@ -25,3 +31,5 @@ void init_pwm();
 void init_servo();
 void set_servo(uint32_t angle);
 void init_motor();
+
+uint32_t map_steering(float steerValue);

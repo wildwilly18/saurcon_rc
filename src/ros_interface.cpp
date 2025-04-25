@@ -77,10 +77,15 @@ void error_loop(){
       velCommand = msg->linear.x;
       steerCommand = msg->angular.z;
 
+      cmd.steer    = steerCommand;
+      cmd.throttle = velCommand;
+
       xSemaphoreGive(controlDataMutex);
     };
+
+    xQueueSend(controlQueue, &cmd, pdMS_TO_TICKS(5));  // Send to queue without waiting
   
-    digitalWrite(LED_PIN, (msg->angular.z == 0) ? LOW : HIGH);  
+    digitalWrite(LED_PIN, (msg->angular.z < 0) ? LOW : HIGH);  
   }
   
   //Ros2 Executor Task

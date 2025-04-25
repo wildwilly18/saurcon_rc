@@ -2,8 +2,8 @@
 #define PINS_H
 
 // Servo Out Pin
-#define ESC_PIN    3
-#define SERVO_PIN  4
+#define ESC_PIN    25
+#define SERVO_PIN  26
 
 //Pin for knob
 #define KNOB_IN A13
@@ -13,9 +13,9 @@
 #define BUTTON_OFF 34
 
 //Pins for hall sensor
-#define A_PIN 2
-#define B_PIN 1
-#define C_PIN 0
+#define A_PIN 13
+#define B_PIN 12
+#define C_PIN 14
 
 //Pins to monitor current
 #define I_in_1 A9
