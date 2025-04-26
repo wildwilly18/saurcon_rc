@@ -9,7 +9,7 @@
 #include <freertos/task.h>
 
 #include "pins.h"
-#include "control_cmd_type.h"
+#include "types/control_cmd_type.h"
 
 
 

@@ -14,7 +14,7 @@
 
 // Types
 #include <geometry_msgs/msg/twist.h>
-#include "control_cmd_type.h"
+#include "types/control_cmd_type.h"
 
 // Arduino and Pins
 #define LED_PIN 13

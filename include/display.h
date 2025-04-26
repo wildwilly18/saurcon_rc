@@ -10,6 +10,8 @@
 #include "pins.h"
 #include "ros_interface.h"
 
+#include "types/display_states.h"
+
 extern TaskHandle_t display_update_task_handle;
 
 void init_display();
