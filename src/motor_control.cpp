@@ -9,10 +9,13 @@ void task_motion_control(void *pv){
     ControlCommand receivedCommand;
 
     while(true){
-        if(xQueueReceive(controlQueue, &receivedCommand, portMAX_DELAY)){
+        if(xQueueReceive(controlQueue, &receivedCommand, pdMS_TO_TICKS(100))){
             uint32_t servo_angle = map_steering(receivedCommand.steer);
 
             set_servo(servo_angle);
+        } else {
+            // Handle timeout case here, e.g., set servo to a default position
+            set_servo(90); // Example: reset to neutral position
         }
         
         vTaskDelay(1);

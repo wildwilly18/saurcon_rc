@@ -4,10 +4,13 @@ uint8_t last_hall_state = 0;
 int motor_position = 0;
 unsigned long last_transition_time;
 float raw_motor_rpm;
-
+float filteredRPM;
 
 // Queues
 QueueHandle_t dt_queue; // Queue to hold dt measurements
+
+// Mutexes
+SemaphoreHandle_t encoderDataMutex;
 
 // Filtered RPM (Global so it can be accessed elsewhere)
 float filtered_motor_rpm;
@@ -30,13 +33,21 @@ const int8_t enc_transition_table[8][8] = {
     {  0, 1, 0, 0,-1, 0,-1, 0 }, // old 7
 };
 
+void init_encoder_mutex(){
+    encoderDataMutex = xSemaphoreCreateMutex();
+    if (encoderDataMutex == NULL) {
+        // Handle Mutex Fault
+        while(1);
+    }
+}
+
 void init_encoder_isr(){
     pinMode(A_PIN, INPUT_PULLUP);
     pinMode(B_PIN, INPUT_PULLUP);
     pinMode(C_PIN, INPUT_PULLUP);
 
     // Create dt queur (holds 20 entries, each uint32_t size)
-    dt_queue = xQueueCreate(20, sizeof(uint32_t));
+    dt_queue = xQueueCreate(10, sizeof(uint32_t));
     if (dt_queue == NULL) {
         while(1); // Stop, need debugging of sorts here
     }
@@ -68,7 +79,7 @@ void IRAM_ATTR enc_isr(){
         //Calculate time difference
         uint32_t dt = now - last_transition_time; // u_seconds
 
-        //Push dt into the queue
+        //Push dt into the queue -> rpm_filter_task waiting for data. 
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xQueueSendFromISR(dt_queue, &dt, &xHigherPriorityTaskWoken);
 
@@ -86,7 +97,7 @@ void rpm_filter_task(void *pvParameters){
     float raw_rpm;
 
     for(;;){
-        if(xQueueReceive(dt_queue, &dt, portMAX_DELAY) == pdTRUE){
+        if(xQueueReceive(dt_queue, &dt, pdMS_TO_TICKS(100)) == pdTRUE){
             if (dt > 0) {
                 raw_rpm = 10000000.0f / (float)dt; // 10,000,000 / Δt
 
@@ -103,6 +114,20 @@ void rpm_filter_task(void *pvParameters){
 
                 //PRINT OUTPUT, NO SERIAL RIGHT NOW.
             }
+        } else {
+            //Timeout: no hall transitions, clear buffer
+            for(int i = 0; i < RPM_FILTER_SIZE; i++){
+                rpm_buffer[i] = 0.0f; // Clear out buffer
+            }
+            filtered_motor_rpm = 0.0f;
+
+            //PRINT DEBUG OUTPUT
+        }
+
+        if(xSemaphoreTake(encoderDataMutex, (TickType_t)10) == pdTRUE) {
+            filteredRPM = filtered_motor_rpm;
+
+            xSemaphoreGive(encoderDataMutex);
         }
     }
 }

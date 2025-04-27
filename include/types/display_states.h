@@ -5,5 +5,6 @@ enum DisplayState {
     RUN,
     ENCODER,
     DEBUG,
-    INIT
+    INIT,
+    FAULT
 };
