@@ -3,6 +3,7 @@
 //Include FreeRTOS
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <freertos/timers.h>
 
 // Micro-Ros includes
 #include <micro_ros_platformio.h>
@@ -23,6 +24,7 @@
 
 // Include needed to pipe the RTOS QUEUE of the CMDs
 #include "motor_control.h"
+#include "state_machine.h"
 
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
@@ -46,6 +48,8 @@ extern rcl_timer_t timer;
 
 //Function
 void init_ROS();
+void setup_watchdog_ros_timer();
+void watchdog_ros_callback(TimerHandle_t xTimer);
 void error_loop();
 void subscription_callback(const void * msgin);
 void ros_executor_task(void *pvParameters);

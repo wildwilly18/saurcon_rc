@@ -1,10 +1,11 @@
 #pragma once
 
 enum DisplayState {
-    OFF,
-    RUN,
-    ENCODER,
-    DEBUG,
-    INIT,
-    FAULT
+    OFF_DISPLAY,
+    STARTUP_DISPLAY,
+    RUN_DISPLAY,
+    ENCODER_DISPLAY,
+    DEBUG_DISPLAY,
+    INIT_DISPLAY,
+    FAULT_DISPLAY
 };

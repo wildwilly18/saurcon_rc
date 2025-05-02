@@ -19,4 +19,8 @@
 extern TaskHandle_t display_update_task_handle;
 
 void init_display();
+
+//display api
+void set_display_state(DisplayState state);
+
 void display_update_task(void *pvParameters);

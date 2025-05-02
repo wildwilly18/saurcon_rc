@@ -12,6 +12,10 @@
 #define BUTTON_ON 33
 #define BUTTON_OFF 34
 
+//Pins for LED
+#define LED_RED 25
+#define LED_GRN 33
+
 //Pins for hall sensor
 #define A_PIN 13
 #define B_PIN 12

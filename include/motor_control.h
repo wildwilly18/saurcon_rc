@@ -11,6 +11,8 @@
 #include "pins.h"
 #include "types/control_cmd_type.h"
 
+#include "state_machine.h"
+
 
 
 using namespace std;

@@ -8,14 +8,13 @@ static char formattedVEL[10];
 static char faultSTR[10];
 
 // Display State
-static DisplayState currentDisplayState = FAULT;
+DisplayState currentDisplayState = STARTUP_DISPLAY;
 
 // FreeRTOS task handles
 TaskHandle_t display_update_task_handle = NULL;
 
 // OLED display object
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, SCL_PIN, SDA_PIN, U8X8_PIN_NONE);
-
 
 void init_display(){
     // OLED setup
@@ -25,8 +24,13 @@ void init_display(){
     u8g2.drawStr(0, 10, "______SauRCon_______");
     u8g2.drawStr(0, 25, "SET STR: ");
     u8g2.drawStr(0, 40, "SET VEL: ");
-    u8g2.drawStr(25, 55, "STATE: START");
+    u8g2.drawStr(25, 55, "STATE: INIT");
     u8g2.sendBuffer();
+}
+
+void set_display_state(DisplayState state){
+  //Probably safe like this, no need for a semaphore.
+  currentDisplayState = state;
 }
 
 //Display update task
@@ -35,7 +39,7 @@ void display_update_task(void *pvParameters)
   while(true) {
 
     switch(currentDisplayState) {
-      case RUN:
+      case RUN_DISPLAY:
         // In run state look at control data mutex for the vel and steer data. Info here may change.
         if(xSemaphoreTake(controlDataMutex, portMAX_DELAY) == pdTRUE){
           // Format velocityCommand into display string
@@ -56,7 +60,7 @@ void display_update_task(void *pvParameters)
         
         break;
 
-      case ENCODER:
+      case ENCODER_DISPLAY:
         //In Encoder State look at encoder data mutex for the rpm and velocity
         if(xSemaphoreTake(encoderDataMutex, portMAX_DELAY) == pdTRUE){
           // Format velocityCommand into display string
@@ -77,7 +81,7 @@ void display_update_task(void *pvParameters)
         
         break;
 
-      case FAULT:
+      case FAULT_DISPLAY:
         SaurconFaults fault = ROS_CONNECTION_LOSS;
 
         sprintf(faultSTR, "%d", fault);
