@@ -64,6 +64,8 @@ void init_ROS(){
 
     digitalWrite(LED_RED, LOW);
     digitalWrite(LED_GRN, LOW);
+
+    set_display_state(RUN_DISPLAY);
     //setup_watchdog_ros_timer();
 }
 

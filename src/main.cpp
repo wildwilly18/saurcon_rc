@@ -36,7 +36,7 @@ void setup() {
   xTaskCreate(display_update_task, "display_update_task", 4096, NULL, 1, &display_update_task_handle);
 
   init_ROS();
-  init_pwm();
+  //init_pwm();
   //init_servo();
   
   //init_encoder_mutex();
@@ -47,7 +47,7 @@ void setup() {
   
   xTaskCreate(ros_executor_task,   "ros_executor_task",   4096, NULL, 1, &ros_executor_task_handle);
   xTaskCreate(task_motion_control, "task_motion_control", 2048, NULL, 2, NULL);
-  xTaskCreatePinnedToCore(rpm_filter_task, "rpm_filter_task", 4096, NULL, 1, NULL, 1);
+  //xTaskCreatePinnedToCore(rpm_filter_task, "rpm_filter_task", 4096, NULL, 1, NULL, 1);
 }
 
 void loop() {
