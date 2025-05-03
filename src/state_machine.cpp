@@ -19,22 +19,49 @@ void StateMachine_SetFault(SaurconFaults fault) {
     }
 }
 
-void handle_startup() {
-    // do startup stuff
-    set_display_state(STARTUP_DISPLAY);
-
+void StateMachine_SetState(SaurconState nextState) {
+    SaurconState currentState;
     // after done, transition to SETUP
     if (stateMutex && xSemaphoreTake(stateMutex, (TickType_t)10) == pdTRUE) {
-        saurcon_state = RUN_SCON;
+        currentState = saurcon_state;
+
+        if(nextState != currentState){
+            saurcon_state = nextState;
+        }
+
         xSemaphoreGive(stateMutex);
     }
+}
 
-    //init_pwm();
-    //init_servo();
+void handle_startup() {
+    // do startup stuff
+    init_display();
+    
+    if(display_update_task_handle == NULL) {
+        xTaskCreate(display_update_task, "display_update_task", 4096, NULL, 1, &display_update_task_handle);
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
+    StateMachine_SetState(STARTUP_ROS_SCON);
+}
+
+void handle_ros_startup(){
+    set_display_state(ROS_STARTUP_DISPLAY);
+    digitalWrite(LED_RED, HIGH);
+    digitalWrite(LED_GRN, LOW);
+
+    // startup ros
+    init_ROS();
 
     //vTaskDelay(pdMS_TO_TICKS(5000));
 
-    //saurcon_state = RUN_SCON;
+    // Create the ROS executor task only after ROS is initialized
+    if (ros_executor_task_handle == NULL) {
+        xTaskCreate(ros_executor_task, "ros_executor_task", 4096, NULL, 1, &ros_executor_task_handle);
+    }
+   
+    StateMachine_SetState(RUN_SCON);
 }
 
 void handle_setup() {
@@ -62,7 +89,7 @@ void handle_fault() {
 void handle_ros_fault() {
     set_display_state(FAULT_DISPLAY);
     // Upon startup if ros unable to establish, handle fault here
-    vTaskDelay(pdMS_TO_TICKS(10000));
+    vTaskDelay(pdMS_TO_TICKS(3000));
     ESP.restart();
 }
 
@@ -75,6 +102,8 @@ void state_machine_task(void *pvParameters) {
         while (1) { vTaskDelay(pdMS_TO_TICKS(1000)); }
     }
 
+    SaurconState previous_state = NO_STATE_SCON;
+
     while (1) {
         SaurconState local_state;
 
@@ -84,30 +113,38 @@ void state_machine_task(void *pvParameters) {
             xSemaphoreGive(stateMutex);
         }
 
-        // State handling
-        switch (local_state) {
-            case STARTUP_SCON:
-                handle_startup();
-                break;
-            case SETUP_SCON:
-                handle_setup();
-                break;
-            case RUN_SCON:
-                digitalWrite(LED_RED, LOW);
-                digitalWrite(LED_GRN, HIGH);
-                handle_run();
-                break;
-            case FAULT_SCON:
-                handle_fault();
-                break;
-            case FAULT_ROS_SCON:
-                digitalWrite(LED_RED, HIGH);
-                digitalWrite(LED_GRN, LOW);
-                handle_ros_fault();;
-                break;
-            default:
-                // shouldn't happen
-                break;
+        if(previous_state != local_state){
+            // State handling
+            switch (local_state) {
+                case STARTUP_SCON:
+                    digitalWrite(LED_RED, LOW);
+                    digitalWrite(LED_GRN, LOW);
+                    handle_startup();
+                    break;
+                case STARTUP_ROS_SCON:
+                    digitalWrite(LED_GRN, LOW);
+                    handle_ros_startup();
+                    break;
+                case SETUP_SCON:
+                    handle_setup();
+                    break;
+                case RUN_SCON:
+                    digitalWrite(LED_RED, LOW);
+                    digitalWrite(LED_GRN, HIGH);
+                    handle_run();
+                    break;
+                case FAULT_SCON:
+                    handle_fault();
+                    break;
+                case FAULT_ROS_SCON:
+                    digitalWrite(LED_RED, HIGH);
+                    digitalWrite(LED_GRN, LOW);
+                    handle_ros_fault();;
+                    break;
+                default:
+                    // shouldn't happen
+                    break;
+            }
         }
 
         // sleep for a little bit to avoid hogging CPU

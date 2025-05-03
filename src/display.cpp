@@ -26,6 +26,8 @@ void init_display(){
     u8g2.drawStr(0, 40, "SET VEL: ");
     u8g2.drawStr(25, 55, "STATE: INIT");
     u8g2.sendBuffer();
+
+    set_display_state(STARTUP_DISPLAY);
 }
 
 void set_display_state(DisplayState state){
@@ -81,7 +83,7 @@ void display_update_task(void *pvParameters)
         
         break;
 
-      case FAULT_DISPLAY:
+      case FAULT_DISPLAY: {
         SaurconFaults fault = ROS_CONNECTION_LOSS;
 
         sprintf(faultSTR, "%d", fault);
@@ -95,7 +97,40 @@ void display_update_task(void *pvParameters)
         u8g2.drawStr(85, 40, faultSTR);   // Incoming throttle value
         u8g2.drawStr(25, 55, "STATE: FAULTED");
 
+        break;}
+
+      case STARTUP_DISPLAY:
+        // Update display
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_t0_12_tf);
+        u8g2.drawStr(0, 10, "______SauRCon_______");
+        u8g2.drawStr(0, 25, "STARTING UP SAURCON");
+        u8g2.drawStr(0, 40, "PLEASE BE PATIENT");
+        u8g2.drawStr(25, 55, "STATE: STARTUP");
+
         break;
+
+      case ROS_STARTUP_DISPLAY:
+        // Update display
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_t0_12_tf);
+        u8g2.drawStr(0, 10, "______SauRCon_______");
+        u8g2.drawStr(0, 25, "SETTING UP ROS");
+        u8g2.drawStr(0, 40, "BE PATIENT WIZARD");
+        u8g2.drawStr(25, 55, "STATE: ROS STARTUP");
+
+        break;
+
+      default:
+        // Update display
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_t0_12_tf);
+        u8g2.drawStr(0, 10, "______SauRCon_______");
+        u8g2.drawStr(0, 25, "WHERE AM I");
+        u8g2.drawStr(0, 40, "PLEASE HELP ME");
+        u8g2.drawStr(25, 55, "STATE: UNKNOWN");
+        break;
+
     }
 
     u8g2.sendBuffer();

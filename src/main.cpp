@@ -17,13 +17,6 @@
 #include "state_machine.h"
 
 
-#ifdef LED_BUILTIN
-#define LED_PIN LED_BUILTIN
-#else
-#define LED_PIN 13
-#endif
-
-
 void setup() {
   pinMode(LED_RED, OUTPUT);
   digitalWrite(LED_RED, HIGH);
@@ -31,11 +24,15 @@ void setup() {
   pinMode(LED_GRN, OUTPUT);
   digitalWrite(LED_GRN, HIGH);
 
-  // Begin Init Functions these to move into state machine
-  init_display();
-  xTaskCreate(display_update_task, "display_update_task", 4096, NULL, 1, &display_update_task_handle);
+  StateMachine_SetState(STARTUP_SCON);
 
-  init_ROS();
+  xTaskCreate(state_machine_task, "state_machine_task", 4096, NULL, 1, NULL);
+
+  // Begin Init Functions these to move into state machine
+  //init_display();
+  //xTaskCreate(display_update_task, "display_update_task", 4096, NULL, 1, &display_update_task_handle);
+
+  //init_ROS();
   //init_pwm();
   //init_servo();
   
@@ -45,8 +42,8 @@ void setup() {
   // create tasks
   //xTaskCreate(state_machine_task, "state_machine_task", 2048, NULL, 1, NULL);
   
-  xTaskCreate(ros_executor_task,   "ros_executor_task",   4096, NULL, 1, &ros_executor_task_handle);
-  xTaskCreate(task_motion_control, "task_motion_control", 2048, NULL, 2, NULL);
+  //xTaskCreate(ros_executor_task,   "ros_executor_task",   4096, NULL, 1, &ros_executor_task_handle);
+  //xTaskCreate(task_motion_control, "task_motion_control", 2048, NULL, 2, NULL);
   //xTaskCreatePinnedToCore(rpm_filter_task, "rpm_filter_task", 4096, NULL, 1, NULL, 1);
 }
 

@@ -1,5 +1,10 @@
-#ifndef PINS_H
-#define PINS_H
+#pragma once
+
+#ifdef LED_BUILTIN
+#define LED_PIN LED_BUILTIN
+#else
+#define LED_PIN 13
+#endif
 
 // Servo Out Pin
 #define ESC_PIN    25
@@ -27,5 +32,3 @@
 
 #define SCL_PIN 22
 #define SDA_PIN 21
-
-#endif // PINS_H

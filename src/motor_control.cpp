@@ -54,7 +54,6 @@ void init_servo()
     SteerServo.setPeriodHertz(50);
     SteerServo.attach(SERVO_PIN);
 
-    /**
     set_servo(90);
     vTaskDelay(pdMS_TO_TICKS(1000));
     set_servo(180);
@@ -62,8 +61,6 @@ void init_servo()
     set_servo(0);
     vTaskDelay(pdMS_TO_TICKS(1000));
     set_servo(90);
-
-    **/
 }
 
 void set_servo(uint32_t angle)

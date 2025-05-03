@@ -17,4 +17,5 @@ extern SaurconState saurcon_state;
 // Public API
 void state_machine_task(void *pvParameters);
 
+void StateMachine_SetState(SaurconState nextState);
 void StateMachine_SetFault(SaurconFaults fault);

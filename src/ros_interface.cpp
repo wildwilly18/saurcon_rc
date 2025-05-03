@@ -30,6 +30,7 @@ void init_ROS(){
     //Setup control data mutex
     controlDataMutex = xSemaphoreCreateMutex();
     if(controlDataMutex == NULL){
+        digitalWrite(LED_PIN, LOW);
         error_loop();
     }
 
@@ -37,9 +38,6 @@ void init_ROS(){
     Serial.setRxBufferSize(1024);
 
     set_microros_serial_transports(Serial);
-    
-    pinMode(LED_PIN, OUTPUT);
-    digitalWrite(LED_PIN, HIGH);  
     
     delay(2000);
 
@@ -62,10 +60,6 @@ void init_ROS(){
     RCCHECK(rclc_executor_init(&executor, &support.context, 1, &ros_allocator));
     RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
 
-    digitalWrite(LED_RED, LOW);
-    digitalWrite(LED_GRN, LOW);
-
-    set_display_state(RUN_DISPLAY);
     //setup_watchdog_ros_timer();
 }
 
@@ -91,10 +85,9 @@ void watchdog_ros_callback(TimerHandle_t xTimer){
 // Define the Micro-ROS objects declared in the header file
 void error_loop(){
   while(1){
-    set_display_state(FAULT_DISPLAY);
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    StateMachine_SetFault(ROS_CONNECTION_LOSS);
+    vTaskDelay(pdMS_TO_TICKS(1000));
     ESP.restart();
-    //StateMachine_SetFault(ROS_CONNECTION_LOSS);
     
   }
 }
@@ -127,7 +120,7 @@ void ros_executor_task(void *pvParameters)
     // Spin the executor to process incoming messages with a timeout
     rcl_ret_t ret = rclc_executor_spin_some(&executor, RCL_MS_TO_NS(50));
 
-    if (ret != RCL_RET_OK) { set_display_state(FAULT_DISPLAY);}//StateMachine_SetFault(ROS_CONNECTION_LOSS);}
+    if (ret != RCL_RET_OK) {StateMachine_SetFault(ROS_CONNECTION_LOSS);}
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
   }
