@@ -106,7 +106,7 @@ void display_update_task(void *pvParameters)
         u8g2.drawStr(0, 10, "______SauRCon_______");
         u8g2.drawStr(0, 25, "STARTING UP SAURCON");
         u8g2.drawStr(0, 40, "PLEASE BE PATIENT");
-        u8g2.drawStr(25, 55, "STATE: STARTUP");
+        u8g2.drawStr(20, 55, "STATE: STARTUP");
 
         break;
 
@@ -117,7 +117,7 @@ void display_update_task(void *pvParameters)
         u8g2.drawStr(0, 10, "______SauRCon_______");
         u8g2.drawStr(0, 25, "SETTING UP ROS");
         u8g2.drawStr(0, 40, "BE PATIENT WIZARD");
-        u8g2.drawStr(25, 55, "STATE: ROS STARTUP");
+        u8g2.drawStr(0, 55, "STATE: ROS START");
 
         break;
 

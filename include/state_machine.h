@@ -14,6 +14,8 @@
 
 extern SaurconState saurcon_state;
 
+extern SemaphoreHandle_t stateMutex;
+
 // Public API
 void state_machine_task(void *pvParameters);
 

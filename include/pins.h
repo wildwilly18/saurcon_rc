@@ -18,8 +18,8 @@
 #define BUTTON_OFF 34
 
 //Pins for LED
-#define LED_RED 25
-#define LED_GRN 33
+#define LED_RED 33
+#define LED_GRN 32
 
 //Pins for hall sensor
 #define A_PIN 13

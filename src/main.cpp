@@ -38,10 +38,7 @@ void setup() {
   
   //init_encoder_mutex();
   //init_encoder_isr();
-
-  // create tasks
-  //xTaskCreate(state_machine_task, "state_machine_task", 2048, NULL, 1, NULL);
-  
+    
   //xTaskCreate(ros_executor_task,   "ros_executor_task",   4096, NULL, 1, &ros_executor_task_handle);
   //xTaskCreate(task_motion_control, "task_motion_control", 2048, NULL, 2, NULL);
   //xTaskCreatePinnedToCore(rpm_filter_task, "rpm_filter_task", 4096, NULL, 1, NULL, 1);

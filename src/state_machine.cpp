@@ -5,7 +5,7 @@ SaurconState saurcon_state;
 static SaurconFaults current_fault = NONE;
 
 // Mutex to protect state transitions if needed (optional but good practice)
-static SemaphoreHandle_t stateMutex = NULL;
+SemaphoreHandle_t stateMutex = NULL;
 
 void StateMachine_SetFault(SaurconFaults fault) {
     //Receive fault, set the current state based on fault.
@@ -54,25 +54,27 @@ void handle_ros_startup(){
     // startup ros
     init_ROS();
 
-    //vTaskDelay(pdMS_TO_TICKS(5000));
-
     // Create the ROS executor task only after ROS is initialized
     if (ros_executor_task_handle == NULL) {
         xTaskCreate(ros_executor_task, "ros_executor_task", 4096, NULL, 1, &ros_executor_task_handle);
     }
    
-    StateMachine_SetState(RUN_SCON);
+    StateMachine_SetState(SETUP_SCON);
 }
 
 void handle_setup() {
     set_display_state(STARTUP_DISPLAY);
-    // initialize sensors, hardware, etc
-    bool setup_success = true; // pretend we checked things
 
-    if (stateMutex && xSemaphoreTake(stateMutex, (TickType_t)10) == pdTRUE) {
-        saurcon_state = setup_success ? RUN_SCON : FAULT_SCON;
-        xSemaphoreGive(stateMutex);
-    }
+    init_pwm();
+    init_servo();
+    init_throttle();
+
+    init_encoder_mutex();
+    init_encoder_isr();
+
+    xTaskCreate(task_motion_control, "task_motion_control", 2048, NULL, 2, NULL);
+
+    StateMachine_SetState(RUN_SCON);
 }
 
 void handle_run() {

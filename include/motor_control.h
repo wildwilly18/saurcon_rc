@@ -32,6 +32,9 @@ void task_motion_control(void *pv);
 void init_pwm();
 void init_servo();
 void set_servo(uint32_t angle);
-void init_motor();
 
+void init_throttle();
+void set_throttle(uint32_t throttle);
+
+uint32_t map_throttle(float speed);
 uint32_t map_steering(float steerValue);
