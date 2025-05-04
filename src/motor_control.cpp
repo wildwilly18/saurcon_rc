@@ -1,7 +1,11 @@
 #include "motor_control.h"
 
 Servo SteerServo;
-Servo Throttle;
+
+//Throttle Setup
+#define ESC_CHANNEL   4
+#define ESC_FREQ     50
+#define ESC_RES_BITS 16
 
 SaurconState localState;
 
@@ -77,16 +81,26 @@ void init_servo()
 
 void init_throttle()
 {
-    Throttle.setPeriodHertz(200);
-    Throttle.attach(ESC_PIN);
+    ledcSetup(ESC_CHANNEL, ESC_FREQ, ESC_RES_BITS);
+    ledcAttachPin(ESC_PIN, ESC_CHANNEL);
 
-    //set_throttle(1500);
-    //vTaskDelay(pdMS_TO_TICKS(1000));
-    //set_throttle(2000);
-    //vTaskDelay(pdMS_TO_TICKS(1500));
-    //set_throttle(1000);
-    //vTaskDelay(pdMS_TO_TICKS(1500));
-    //set_throttle(1500);
+    digitalWrite(LED_RED,   HIGH);
+    digitalWrite(LED_GRN, HIGH);
+
+    //Need to watch for the rpm and if > some small number skip the throttle setup. 
+
+    vTaskDelay(pdMS_TO_TICKS(4000));
+    set_throttle(2000);
+    digitalWrite(LED_RED,   LOW);
+    vTaskDelay(pdMS_TO_TICKS(5000));
+
+    set_throttle(1000);
+    digitalWrite(LED_GRN,   LOW);
+    vTaskDelay(pdMS_TO_TICKS(5000));
+
+    set_throttle(1500);
+    digitalWrite(LED_RED,   HIGH);
+    digitalWrite(LED_GRN, HIGH);
 }
 
 void set_servo(uint32_t angle)
@@ -101,7 +115,9 @@ void set_throttle(uint32_t throttle)
     uint32_t throttle_set = max(MIN_ESC_PWM, throttle);
     throttle_set = min(MAX_ESC_PWM, throttle_set);
     throttle_set = min(MAX_ESC_PWM, throttle_set);
-    Throttle.write(throttle_set);
+
+    //write us
+    write_esc_us(throttle_set);
 }
 
 uint32_t map_throttle(float speed)
@@ -126,4 +142,10 @@ uint32_t map_steering(float steerValue)
 
     // Map to [0, 180]
     return (uint32_t)((steerValue + 1.0f) * 90.0f);  // (-1 maps to 0, 0 to 90, 1 to 180)
+}
+
+void write_esc_us(uint32_t microseconds){
+    // Convert microseconds to 16-bit duty (50Hz = 20,000 us period)
+    uint32_t duty = microseconds * 65535 / 20000;
+    ledcWrite(ESC_CHANNEL, duty);
 }

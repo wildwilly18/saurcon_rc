@@ -35,6 +35,7 @@ void set_servo(uint32_t angle);
 
 void init_throttle();
 void set_throttle(uint32_t throttle);
+void write_esc_us(uint32_t microseconds);
 
 uint32_t map_throttle(float speed);
 uint32_t map_steering(float steerValue);
