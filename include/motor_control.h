@@ -12,7 +12,7 @@
 #include "types/control_cmd_type.h"
 
 #include "state_machine.h"
-
+#include "encoder.h"
 
 
 using namespace std;

@@ -84,22 +84,59 @@ void init_throttle()
     ledcSetup(ESC_CHANNEL, ESC_FREQ, ESC_RES_BITS);
     ledcAttachPin(ESC_PIN, ESC_CHANNEL);
 
-    digitalWrite(LED_RED,   HIGH);
+    digitalWrite(LED_RED, HIGH);
     digitalWrite(LED_GRN, HIGH);
 
-    //Need to watch for the rpm and if > some small number skip the throttle setup. 
+    float motor_rpm = 0;
 
-    vTaskDelay(pdMS_TO_TICKS(4000));
+    // Check if already spinning before attempting calibration
+    if(xSemaphoreTake(encoderDataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        motor_rpm = filteredRPM;
+        xSemaphoreGive(encoderDataMutex);
+    }
+
+    if (fabs(motor_rpm) > 10.0) {
+        // ESC already armed or spinning — skip calibration
+        return;
+    }
+
+    // STEP 1A: Send MAX throttle and monitor RPM
+    set_throttle(1600);
+    digitalWrite(LED_RED, LOW);
+
+    const int check_duration_ms = 1000;
+    const int sample_interval_ms = 10;
+    const int max_checks = check_duration_ms / sample_interval_ms;
+
+    for (int i = 0; i < max_checks; ++i) {
+        if(xSemaphoreTake(encoderDataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            motor_rpm = filteredRPM;
+            xSemaphoreGive(encoderDataMutex);
+        }
+
+        if (fabs(motor_rpm) > 10.0) {
+            // Motor responded — assume ESC already calibrated
+            set_throttle(1500);
+            digitalWrite(LED_RED, HIGH);
+            digitalWrite(LED_GRN, HIGH);
+            return;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(sample_interval_ms));
+    }
+
+    // STEP 1B: Send FULL throttle
     set_throttle(2000);
-    digitalWrite(LED_RED,   LOW);
-    vTaskDelay(pdMS_TO_TICKS(5000));
+    vTaskDelay(pdMS_TO_TICKS(4000));
 
+    // STEP 2: Send MIN throttle
     set_throttle(1000);
-    digitalWrite(LED_GRN,   LOW);
-    vTaskDelay(pdMS_TO_TICKS(5000));
+    digitalWrite(LED_GRN, LOW);
+    vTaskDelay(pdMS_TO_TICKS(4000));
 
+    // STEP 3: Neutral throttle to finish
     set_throttle(1500);
-    digitalWrite(LED_RED,   HIGH);
+    digitalWrite(LED_RED, HIGH);
     digitalWrite(LED_GRN, HIGH);
 }
 

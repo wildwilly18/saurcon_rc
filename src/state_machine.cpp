@@ -65,12 +65,14 @@ void handle_ros_startup(){
 void handle_setup() {
     set_display_state(STARTUP_DISPLAY);
 
+    init_encoder_mutex();
+    init_encoder_isr();
+
+    xTaskCreatePinnedToCore(rpm_filter_task, "rpm_filter_task", 4096, NULL, 1, NULL, 1);
+
     init_pwm();
     init_servo();
     init_throttle();
-
-    init_encoder_mutex();
-    init_encoder_isr();
 
     xTaskCreate(task_motion_control, "task_motion_control", 2048, NULL, 2, NULL);
 
@@ -79,7 +81,7 @@ void handle_setup() {
 
 void handle_run() {
     // normal running mode
-    set_display_state(RUN_DISPLAY);
+    set_display_state(ENCODER_DISPLAY);
 }
 
 void handle_fault() {
