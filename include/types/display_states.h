@@ -1,0 +1,12 @@
+#pragma once
+
+enum DisplayState {
+    OFF_DISPLAY,
+    STARTUP_DISPLAY,
+    ROS_STARTUP_DISPLAY,
+    RUN_DISPLAY,
+    ENCODER_DISPLAY,
+    DEBUG_DISPLAY,
+    INIT_DISPLAY,
+    FAULT_DISPLAY
+};
