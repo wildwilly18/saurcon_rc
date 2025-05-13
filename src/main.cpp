@@ -24,6 +24,11 @@ void setup() {
   pinMode(LED_GRN, OUTPUT);
   digitalWrite(LED_GRN, HIGH);
 
+  pinMode(LED_YEL, OUTPUT);
+  digitalWrite(LED_YEL, HIGH);
+
+  delay(5000);
+
   StateMachine_SetState(STARTUP_SCON);
 
   xTaskCreate(state_machine_task, "state_machine_task", 4096, NULL, 1, NULL);

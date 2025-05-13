@@ -7,19 +7,13 @@
 #endif
 
 // Servo Out Pin
-#define ESC_PIN    25
-#define SERVO_PIN  26
-
-//Pin for knob
-#define KNOB_IN A13
-
-//Pins for buttons
-#define BUTTON_ON 33
-#define BUTTON_OFF 34
+#define ESC_PIN    19
+#define SERVO_PIN  18
 
 //Pins for LED
-#define LED_RED 33
-#define LED_GRN 32
+#define LED_RED 25
+#define LED_GRN 33
+#define LED_YEL 32
 
 //Pins for hall sensor
 #define A_PIN 13
