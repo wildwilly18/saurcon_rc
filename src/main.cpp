@@ -17,36 +17,13 @@
 #include "state_machine.h"
 
 
+void state_machine_task(void *param){
+  stateMachine = new StateMachine(); 
+  while (true){stateMachine -> run();}
+}
+
 void setup() {
-  pinMode(LED_RED, OUTPUT);
-  digitalWrite(LED_RED, HIGH);
-
-  pinMode(LED_GRN, OUTPUT);
-  digitalWrite(LED_GRN, HIGH);
-
-  pinMode(LED_YEL, OUTPUT);
-  digitalWrite(LED_YEL, HIGH);
-
-  delay(5000);
-
-  StateMachine_SetState(STARTUP_SCON);
-
-  xTaskCreate(state_machine_task, "state_machine_task", 4096, NULL, 1, NULL);
-
-  // Begin Init Functions these to move into state machine
-  //init_display();
-  //xTaskCreate(display_update_task, "display_update_task", 4096, NULL, 1, &display_update_task_handle);
-
-  //init_ROS();
-  //init_pwm();
-  //init_servo();
-  
-  //init_encoder_mutex();
-  //init_encoder_isr();
-    
-  //xTaskCreate(ros_executor_task,   "ros_executor_task",   4096, NULL, 1, &ros_executor_task_handle);
-  //xTaskCreate(task_motion_control, "task_motion_control", 2048, NULL, 2, NULL);
-  //xTaskCreatePinnedToCore(rpm_filter_task, "rpm_filter_task", 4096, NULL, 1, NULL, 1);
+  xTaskCreate(state_machine_task, "state_machine_task", 8192, NULL, 1, NULL);
 }
 
 void loop() {

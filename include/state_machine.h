@@ -1,23 +1,48 @@
 #pragma once
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-
-#include "types/saurcon_faults.h"
-#include "types/saurcon_states.h"
+#include <Arduino.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 #include "display.h"
-#include "motor_control.h"
 #include "ros_interface.h"
+#include "motor_control.h"
 #include "encoder.h"
 
-extern SaurconState saurcon_state;
+#include "types/saurcon_enums.h"
 
-extern SemaphoreHandle_t stateMutex;
+extern TaskHandle_t ros_executor_task_handle;
 
-// Public API
-void state_machine_task(void *pvParameters);
+class StateMachine {
+public:
+    StateMachine();
+    void run();
+    void setState(SaurconState nextState);
+    void setFault(SaurconFaults fault);
+    SaurconState getState();
 
-void StateMachine_SetState(SaurconState nextState);
-void StateMachine_SetFault(SaurconFaults fault);
+private:
+    SaurconState currentState;
+    SaurconState previousState;
+    SemaphoreHandle_t stateMutex;
+
+    DisplayManager display;
+
+    void onEnter(SaurconState state);
+    void onExit(SaurconState state);
+    void handle(SaurconState state);
+
+    void onEnter_STARTUP_SCON();
+    void handle_STARTUP_SCON();
+    void onEnter_STARTUP_ROS_SCON();
+    void handle_STARTUP_ROS_SCON();
+    void onEnter_SETUP_SCON();
+    void handle_SETUP_SCON();
+    void onEnter_RUN_SCON();
+    void handle_RUN_SCON();
+    void onExit_RUN_SCON();
+    void onEnter_FAULT_SCON();
+    void handle_FAULT_SCON();
+    void onEnter_FAULT_ROS_SCON();
+    void handle_FAULT_ROS_SCON();
+};

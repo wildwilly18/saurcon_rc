@@ -1,157 +1,153 @@
 #include "state_machine.h"
+#include "display.h"
 
-// Current state
-SaurconState saurcon_state;
-static SaurconFaults current_fault = NONE;
+// Initialize the State Machine
+StateMachine::StateMachine() {
+    stateMutex = xSemaphoreCreateMutex();
+    currentState = STARTUP_SCON;
+    previousState = NO_STATE_SCON;
 
-// Mutex to protect state transitions if needed (optional but good practice)
-SemaphoreHandle_t stateMutex = NULL;
+    display.init();
+    display.startTask();
+}
 
-void StateMachine_SetFault(SaurconFaults fault) {
-    //Receive fault, set the current state based on fault.
-    if (stateMutex && xSemaphoreTake(stateMutex, (TickType_t)10) == pdTRUE) {
-        if(fault == ROS_CONNECTION_LOSS){
-            saurcon_state = FAULT_ROS_SCON;
-        }   else {
-            saurcon_state = FAULT_SCON;
+void StateMachine::setState(SaurconState nextState) {
+    if (xSemaphoreTake(stateMutex, 10) == pdTRUE) {
+        if (nextState != currentState) {
+            currentState = nextState;
         }
         xSemaphoreGive(stateMutex);
     }
 }
 
-void StateMachine_SetState(SaurconState nextState) {
-    SaurconState currentState;
-    // after done, transition to SETUP
-    if (stateMutex && xSemaphoreTake(stateMutex, (TickType_t)10) == pdTRUE) {
-        currentState = saurcon_state;
-
-        if(nextState != currentState){
-            saurcon_state = nextState;
-        }
-
+void StateMachine::setFault(SaurconFaults fault) {
+    if (xSemaphoreTake(stateMutex, 10) == pdTRUE) {
+        currentState = (fault == ROS_CONNECTION_LOSS) ? FAULT_ROS_SCON : FAULT_SCON;
         xSemaphoreGive(stateMutex);
     }
 }
 
-void handle_startup() {
-    // do startup stuff
-    init_display();
-    
-    if(display_update_task_handle == NULL) {
-        xTaskCreate(display_update_task, "display_update_task", 4096, NULL, 1, &display_update_task_handle);
+SaurconState StateMachine::getState() {
+    SaurconState state;
+    if (xSemaphoreTake(stateMutex, 10) == pdTRUE) {
+        state = currentState;
+        xSemaphoreGive(stateMutex);
+    }
+    return state;
+}
+
+void StateMachine::run() {
+    SaurconState localState = getState();
+
+    if (localState != previousState) {
+        onExit(previousState);
+        onEnter(localState);
+        previousState = localState;
     }
 
+    handle(localState);
+    vTaskDelay(pdMS_TO_TICKS(100));
+}
+
+// --- State Routing ---
+
+void StateMachine::onEnter(SaurconState state) {
+    switch (state) {
+        case STARTUP_SCON: onEnter_STARTUP_SCON(); break;
+        case STARTUP_ROS_SCON: onEnter_STARTUP_ROS_SCON(); break;
+        case SETUP_SCON: onEnter_SETUP_SCON(); break;
+        case RUN_SCON: onEnter_RUN_SCON(); break;
+        case FAULT_SCON: onEnter_FAULT_SCON(); break;
+        case FAULT_ROS_SCON: onEnter_FAULT_ROS_SCON(); break;
+        default: break;
+    }
+}
+
+void StateMachine::handle(SaurconState state) {
+    switch (state) {
+        case STARTUP_SCON: handle_STARTUP_SCON(); break;
+        case STARTUP_ROS_SCON: handle_STARTUP_ROS_SCON(); break;
+        case SETUP_SCON: handle_SETUP_SCON(); break;
+        case RUN_SCON: handle_RUN_SCON(); break;
+        case FAULT_SCON: handle_FAULT_SCON(); break;
+        case FAULT_ROS_SCON: handle_FAULT_ROS_SCON(); break;
+        default: break;
+    }
+}
+
+void StateMachine::onExit(SaurconState state) {
+    switch (state) {
+        case RUN_SCON: onExit_RUN_SCON(); break;
+        default: break; // No exit behavior for other states yet
+    }
+}
+
+// --- Individual State Methods ---
+
+void StateMachine::onEnter_STARTUP_SCON() {
+
+}
+
+void StateMachine::handle_STARTUP_SCON() {
     vTaskDelay(pdMS_TO_TICKS(2000));
-
-    StateMachine_SetState(STARTUP_ROS_SCON);
+    setState(STARTUP_ROS_SCON);
 }
 
-void handle_ros_startup(){
-    set_display_state(ROS_STARTUP_DISPLAY);
+void StateMachine::onEnter_STARTUP_ROS_SCON() {
     digitalWrite(LED_RED, HIGH);
     digitalWrite(LED_GRN, LOW);
-
-    // startup ros
     init_ROS();
-
-    // Create the ROS executor task only after ROS is initialized
-    if (ros_executor_task_handle == NULL) {
+    if (!ros_executor_task_handle) {
         xTaskCreate(ros_executor_task, "ros_executor_task", 4096, NULL, 1, &ros_executor_task_handle);
     }
-   
-    StateMachine_SetState(SETUP_SCON);
 }
 
-void handle_setup() {
-    set_display_state(STARTUP_DISPLAY);
+void StateMachine::handle_STARTUP_ROS_SCON() {
+    setState(SETUP_SCON);
+}
 
+void StateMachine::onEnter_SETUP_SCON() {
+    //display.setState(STARTUP_DISPLAY);
+}
+
+void StateMachine::handle_SETUP_SCON() {
     init_encoder_mutex();
     init_encoder_isr();
-
     xTaskCreatePinnedToCore(rpm_filter_task, "rpm_filter_task", 4096, NULL, 1, NULL, 1);
-
     init_pwm();
     init_servo();
     init_throttle();
-
     xTaskCreate(task_motion_control, "task_motion_control", 2048, NULL, 2, NULL);
-
-    StateMachine_SetState(RUN_SCON);
+    setState(RUN_SCON);
 }
 
-void handle_run() {
-    // normal running mode
-    set_display_state(ENCODER_DISPLAY);
+void StateMachine::onEnter_RUN_SCON() {
+    display.setState(ENCODER_DISPLAY);
+    digitalWrite(LED_RED, LOW);
+    digitalWrite(LED_GRN, HIGH);
 }
 
-void handle_fault() {
-    // stop motors, blink LEDs, whatever is needed
-    set_display_state(FAULT_DISPLAY);
-    
+void StateMachine::handle_RUN_SCON() {
+    // Placeholder for main loop operations
 }
 
-void handle_ros_fault() {
-    set_display_state(FAULT_DISPLAY);
-    // Upon startup if ros unable to establish, handle fault here
+void StateMachine::onExit_RUN_SCON() {
+    // Placeholder for cleanup logic
+}
+
+void StateMachine::onEnter_FAULT_SCON() {
+    display.setState(FAULT_DISPLAY);
+}
+
+void StateMachine::handle_FAULT_SCON() {
+    // Placeholder for fault handling logic
+}
+
+void StateMachine::onEnter_FAULT_ROS_SCON() {
+    display.setState(FAULT_DISPLAY);
+}
+
+void StateMachine::handle_FAULT_ROS_SCON() {
     vTaskDelay(pdMS_TO_TICKS(3000));
     ESP.restart();
-}
-
-void state_machine_task(void *pvParameters) {
-    // Create the mutex
-    stateMutex = xSemaphoreCreateMutex();
-
-    if (stateMutex == NULL) {
-        // Could not create mutex, stay here or log error
-        while (1) { vTaskDelay(pdMS_TO_TICKS(1000)); }
-    }
-
-    SaurconState previous_state = NO_STATE_SCON;
-
-    while (1) {
-        SaurconState local_state;
-
-        // Safely read the current state
-        if (xSemaphoreTake(stateMutex, (TickType_t)10) == pdTRUE) {
-            local_state = saurcon_state;
-            xSemaphoreGive(stateMutex);
-        }
-
-        if(previous_state != local_state){
-            // State handling
-            switch (local_state) {
-                case STARTUP_SCON:
-                    digitalWrite(LED_RED, LOW);
-                    digitalWrite(LED_GRN, LOW);
-                    handle_startup();
-                    break;
-                case STARTUP_ROS_SCON:
-                    digitalWrite(LED_GRN, LOW);
-                    handle_ros_startup();
-                    break;
-                case SETUP_SCON:
-                    handle_setup();
-                    break;
-                case RUN_SCON:
-                    digitalWrite(LED_RED, LOW);
-                    digitalWrite(LED_GRN, HIGH);
-                    handle_run();
-                    break;
-                case FAULT_SCON:
-                    handle_fault();
-                    break;
-                case FAULT_ROS_SCON:
-                    digitalWrite(LED_RED, HIGH);
-                    digitalWrite(LED_GRN, LOW);
-                    handle_ros_fault();;
-                    break;
-                default:
-                    // shouldn't happen
-                    break;
-            }
-        }
-
-        // sleep for a little bit to avoid hogging CPU
-        vTaskDelay(pdMS_TO_TICKS(100));
-    }
 }

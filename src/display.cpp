@@ -1,23 +1,16 @@
 #include "display.h"
+#include "shared_resources.h"
 
-// UI display buffers
-static char formattedSetVEL[10];
-static char formattedSetSTEER[10];
-static char formattedRPM[10];
-static char formattedVEL[10];
-static char faultSTR[10];
+DisplayManager::DisplayManager() : currentDisplayState(STARTUP_DISPLAY) {
+    sprintf(formattedSetVEL, "0.0000");
+    sprintf(formattedSetSTEER, "0.0000");
+    sprintf(formattedRPM, "0.0000");
+    sprintf(formattedVEL, "0.0000");
+    sprintf(faultSTR, "0");
+    display_update_task_handle = NULL;
+}
 
-// Display State
-DisplayState currentDisplayState = STARTUP_DISPLAY;
-
-// FreeRTOS task handles
-TaskHandle_t display_update_task_handle = NULL;
-
-// OLED display object
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, SCL_PIN, SDA_PIN, U8X8_PIN_NONE);
-
-void init_display(){
-    // OLED setup
+void DisplayManager::init() {
     u8g2.begin();
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_t0_12_tf);
@@ -26,115 +19,85 @@ void init_display(){
     u8g2.drawStr(0, 40, "SET VEL: ");
     u8g2.drawStr(25, 55, "STATE: INIT");
     u8g2.sendBuffer();
-
-    set_display_state(STARTUP_DISPLAY);
+    setState(STARTUP_DISPLAY);
 }
 
-void set_display_state(DisplayState state){
-  //Probably safe like this, no need for a semaphore.
-  currentDisplayState = state;
+void DisplayManager::setState(DisplayState state) {
+    currentDisplayState = state;
 }
 
-//Display update task
-void display_update_task(void *pvParameters)
-{
-  while(true) {
+void DisplayManager::startTask() {
+    xTaskCreate(DisplayManager::display_update_task, "display_update_task", 4096, this, 1, &display_update_task_handle);
+}
 
-    switch(currentDisplayState) {
-      case RUN_DISPLAY:
-        // In run state look at control data mutex for the vel and steer data. Info here may change.
-        if(xSemaphoreTake(controlDataMutex, portMAX_DELAY) == pdTRUE){
-          // Format velocityCommand into display string
-          sprintf(formattedSetVEL, "%03.4f", velCommand);
-          sprintf(formattedSetSTEER, "%03.4f", steerCommand);
-          xSemaphoreGive(controlDataMutex); //Release Mutex
-        };
+void DisplayManager::display_update_task(void *pvParameters) {
+    DisplayManager* display = static_cast<DisplayManager*>(pvParameters);
+    while (true) {
+        display->u8g2.clearBuffer();
+        display->u8g2.setFont(u8g2_font_t0_12_tf);
 
-        // Update display
-        u8g2.clearBuffer();
-        u8g2.setFont(u8g2_font_t0_12_tf);
-        u8g2.drawStr(0, 10, "______SauRCon_______");
-        u8g2.drawStr(0, 25, "SET STR: ");
-        u8g2.drawStr(0, 40, "SET VEL: ");
-        u8g2.drawStr(85, 25, formattedSetSTEER);      // Your velocity reading (maybe add later)
-        u8g2.drawStr(85, 40, formattedSetVEL);   // Incoming throttle value
-        u8g2.drawStr(25, 55, "STATE: RUN");
-        
-        break;
+        switch (display->currentDisplayState) {
+            case RUN_DISPLAY:
+                if (xSemaphoreTake(controlDataMutex, portMAX_DELAY) == pdTRUE) {
+                    sprintf(display->formattedSetVEL, "%03.4f", velCommand);
+                    sprintf(display->formattedSetSTEER, "%03.4f", steerCommand);
+                    xSemaphoreGive(controlDataMutex);
+                }
+                display->u8g2.drawStr(0, 10, "______SauRCon_______");
+                display->u8g2.drawStr(0, 25, "SET STR: ");
+                display->u8g2.drawStr(0, 40, "SET VEL: ");
+                display->u8g2.drawStr(85, 25, display->formattedSetSTEER);
+                display->u8g2.drawStr(85, 40, display->formattedSetVEL);
+                display->u8g2.drawStr(25, 55, "STATE: RUN");
+                break;
 
-      case ENCODER_DISPLAY:
-        //In Encoder State look at encoder data mutex for the rpm and velocity
-        if(xSemaphoreTake(encoderDataMutex, portMAX_DELAY) == pdTRUE){
-          // Format velocityCommand into display string
-          sprintf(formattedRPM, "%03.4f", filteredRPM);
-          sprintf(formattedVEL, "%03.4f", filteredRPM);
-          xSemaphoreGive(encoderDataMutex); //Release Mutex
+            case ENCODER_DISPLAY:
+                if (xSemaphoreTake(encoderDataMutex, portMAX_DELAY) == pdTRUE) {
+                    sprintf(display->formattedRPM, "%03.4f", filteredRPM);
+                    sprintf(display->formattedVEL, "%03.4f", filteredRPM);
+                    xSemaphoreGive(encoderDataMutex);
+                }
+                display->u8g2.drawStr(0, 10, "______SauRCon_______");
+                display->u8g2.drawStr(0, 25, "ENC RPM: ");
+                display->u8g2.drawStr(0, 40, "ENC VEL: ");
+                display->u8g2.drawStr(85, 25, display->formattedRPM);
+                display->u8g2.drawStr(85, 40, display->formattedVEL);
+                display->u8g2.drawStr(25, 55, "STATE: ENCODER");
+                break;
+
+            case FAULT_DISPLAY:
+                sprintf(display->faultSTR, "%d", ROS_CONNECTION_LOSS);
+                display->u8g2.drawStr(0, 10, "______SauRCon_______");
+                display->u8g2.drawStr(0, 25, "FAULT: ");
+                display->u8g2.drawStr(0, 40, "RESET: ");
+                display->u8g2.drawStr(85, 25, display->faultSTR);
+                display->u8g2.drawStr(85, 40, display->faultSTR);
+                display->u8g2.drawStr(25, 55, "STATE: FAULTED");
+                break;
+
+            case STARTUP_DISPLAY:
+                display->u8g2.drawStr(0, 10, "______SauRCon_______");
+                display->u8g2.drawStr(0, 25, "STARTING UP SAURCON");
+                display->u8g2.drawStr(0, 40, "PLEASE BE PATIENT");
+                display->u8g2.drawStr(20, 55, "STATE: STARTUP");
+                break;
+
+            case ROS_STARTUP_DISPLAY:
+                display->u8g2.drawStr(0, 10, "______SauRCon_______");
+                display->u8g2.drawStr(0, 25, "SETTING UP ROS");
+                display->u8g2.drawStr(0, 40, "BE PATIENT WIZARD");
+                display->u8g2.drawStr(0, 55, "STATE: ROS START");
+                break;
+
+            default:
+                display->u8g2.drawStr(0, 10, "______SauRCon_______");
+                display->u8g2.drawStr(0, 25, "WHERE AM I");
+                display->u8g2.drawStr(0, 40, "PLEASE HELP ME");
+                display->u8g2.drawStr(25, 55, "STATE: UNKNOWN");
+                break;
         }
 
-        // Update display
-        u8g2.clearBuffer();
-        u8g2.setFont(u8g2_font_t0_12_tf);
-        u8g2.drawStr(0, 10, "______SauRCon_______");
-        u8g2.drawStr(0, 25, "ENC RPM: ");
-        u8g2.drawStr(0, 40, "ENC VEL: ");
-        u8g2.drawStr(85, 25, formattedRPM);      // Your velocity reading (maybe add later)
-        u8g2.drawStr(85, 40, formattedVEL);   // Incoming throttle value
-        u8g2.drawStr(25, 55, "STATE: ENCODER");
-        
-        break;
-
-      case FAULT_DISPLAY: {
-        SaurconFaults fault = ROS_CONNECTION_LOSS;
-
-        sprintf(faultSTR, "%d", fault);
-        // Update display
-        u8g2.clearBuffer();
-        u8g2.setFont(u8g2_font_t0_12_tf);
-        u8g2.drawStr(0, 10, "______SauRCon_______");
-        u8g2.drawStr(0, 25, "FAULT: ");
-        u8g2.drawStr(0, 40, "RESET: ");
-        u8g2.drawStr(85, 25, faultSTR);      // Your velocity reading (maybe add later)
-        u8g2.drawStr(85, 40, faultSTR);   // Incoming throttle value
-        u8g2.drawStr(25, 55, "STATE: FAULTED");
-
-        break;}
-
-      case STARTUP_DISPLAY:
-        // Update display
-        u8g2.clearBuffer();
-        u8g2.setFont(u8g2_font_t0_12_tf);
-        u8g2.drawStr(0, 10, "______SauRCon_______");
-        u8g2.drawStr(0, 25, "STARTING UP SAURCON");
-        u8g2.drawStr(0, 40, "PLEASE BE PATIENT");
-        u8g2.drawStr(20, 55, "STATE: STARTUP");
-
-        break;
-
-      case ROS_STARTUP_DISPLAY:
-        // Update display
-        u8g2.clearBuffer();
-        u8g2.setFont(u8g2_font_t0_12_tf);
-        u8g2.drawStr(0, 10, "______SauRCon_______");
-        u8g2.drawStr(0, 25, "SETTING UP ROS");
-        u8g2.drawStr(0, 40, "BE PATIENT WIZARD");
-        u8g2.drawStr(0, 55, "STATE: ROS START");
-
-        break;
-
-      default:
-        // Update display
-        u8g2.clearBuffer();
-        u8g2.setFont(u8g2_font_t0_12_tf);
-        u8g2.drawStr(0, 10, "______SauRCon_______");
-        u8g2.drawStr(0, 25, "WHERE AM I");
-        u8g2.drawStr(0, 40, "PLEASE HELP ME");
-        u8g2.drawStr(25, 55, "STATE: UNKNOWN");
-        break;
-
+        display->u8g2.sendBuffer();
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
-
-    u8g2.sendBuffer();
-    
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-  }
 }

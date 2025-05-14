@@ -1,4 +1,5 @@
 #include "motor_control.h"
+#include "shared_resources.h"
 
 Servo SteerServo;
 
@@ -22,10 +23,8 @@ void task_motion_control(void *pv){
 
     while(true){
         // after done, transition to SETUP
-        if (stateMutex && xSemaphoreTake(stateMutex, (TickType_t)10) == pdTRUE) {
-            localState = saurcon_state;
-    
-            xSemaphoreGive(stateMutex);
+        if (stateMachine) {
+            localState = stateMachine->getState();
         }
         
         if(xQueueReceive(controlQueue, &receivedCommand, pdMS_TO_TICKS(200))){
@@ -48,10 +47,13 @@ void task_motion_control(void *pv){
             }
 
         } else {
-            StateMachine_SetFault(ROS_CONNECTION_LOSS);
-            set_servo(servo_angle);
-            digitalWrite(LED_RED, HIGH);
-            // Handle timeout case here, e.g., set servo to a default position
+            if(stateMachine)
+            {
+                stateMachine->setFault(ROS_CONNECTION_LOSS);
+                set_servo(servo_angle);
+                digitalWrite(LED_RED, HIGH);
+                // Handle timeout case here, e.g., set servo to a default position
+            }
         }
         
         vTaskDelay(1);

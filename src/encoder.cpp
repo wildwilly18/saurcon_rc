@@ -1,16 +1,16 @@
 #include "encoder.h"
+#include "shared_resources.h"
 
 uint8_t last_hall_state = 0;
 int motor_position = 0;
 unsigned long last_transition_time;
 float raw_motor_rpm;
-float filteredRPM;
 
 // Queues
 QueueHandle_t dt_queue; // Queue to hold dt measurements
 
 // Mutexes
-SemaphoreHandle_t encoderDataMutex;
+//SemaphoreHandle_t encoderDataMutex;
 
 // Filtered RPM (Global so it can be accessed elsewhere)
 float filtered_motor_rpm;

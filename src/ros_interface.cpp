@@ -1,9 +1,5 @@
 #include "ros_interface.h"
-
-SemaphoreHandle_t controlDataMutex;
-
-// Define the task handle
-TaskHandle_t ros_executor_task_handle = NULL;
+#include "shared_resources.h"
 
 //Setup a time handle
 TimerHandle_t watchdog_ros_timer;
@@ -21,9 +17,6 @@ ControlCommand cmd;
 
 static volatile uint32_t last_msg_tick = 0;
 #define TIMEOUT_ROS_MS 120
-
-float velCommand = 0.0;
-float steerCommand = 0.0;
 
 void init_ROS(){
 
@@ -78,14 +71,14 @@ void setup_watchdog_ros_timer(){
 void watchdog_ros_callback(TimerHandle_t xTimer){
   uint32_t now = xTaskGetTickCount();
   if((now-last_msg_tick) > pdMS_TO_TICKS(TIMEOUT_ROS_MS)) {
-    //StateMachine_SetFault(ROS_CONNECTION_LOSS);
+    //stateMachine->setFault(ROS_CONNECTION_LOSS);
   }
 }
 
 // Define the Micro-ROS objects declared in the header file
 void error_loop(){
   while(1){
-    StateMachine_SetFault(ROS_CONNECTION_LOSS);
+    stateMachine->setFault(ROS_CONNECTION_LOSS);
     vTaskDelay(pdMS_TO_TICKS(1000));
     ESP.restart();
     
@@ -120,7 +113,7 @@ void ros_executor_task(void *pvParameters)
     // Spin the executor to process incoming messages with a timeout
     rcl_ret_t ret = rclc_executor_spin_some(&executor, RCL_MS_TO_NS(50));
 
-    if (ret != RCL_RET_OK) {StateMachine_SetFault(ROS_CONNECTION_LOSS);}
+    //if (ret != RCL_RET_OK) {stateMachine->setFault(ROS_CONNECTION_LOSS);}
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
   }

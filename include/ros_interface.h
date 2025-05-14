@@ -29,14 +29,6 @@
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
-//Shared Variables Set
-extern float velCommand;
-extern float steerCommand;
-
-extern TaskHandle_t ros_executor_task_handle;
-
-extern SemaphoreHandle_t controlDataMutex;
-
 //Micro-Ros objects
 extern rcl_subscription_t subscriber;
 extern geometry_msgs__msg__Twist msg;

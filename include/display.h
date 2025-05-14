@@ -9,18 +9,29 @@
 #include <U8g2lib.h>
 #include "pins.h"
 
-// Local Includes --> Be selective, helps to track what's interacting with each other <--
-#include "ros_interface.h"
-#include "encoder.h"
+#include "types/saurcon_enums.h"
+#include "shared_resources.h"
 
-#include "types/display_states.h"
-#include "types/saurcon_faults.h"
+class DisplayManager {
+    public:
+        DisplayManager();
+    
+        void init();
+        void setState(DisplayState state);
+        void startTask();
 
-extern TaskHandle_t display_update_task_handle;
-
-void init_display();
-
-//display api
-void set_display_state(DisplayState state);
-
-void display_update_task(void *pvParameters);
+        static void display_update_task(void *param);
+    
+    private:
+        DisplayState currentDisplayState;
+        TaskHandle_t display_update_task_handle;
+    
+        char formattedSetVEL[10];
+        char formattedSetSTEER[10];
+        char formattedRPM[10];
+        char formattedVEL[10];
+        char faultSTR[10];
+    
+        U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2 =
+            U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, SCL_PIN, SDA_PIN, U8X8_PIN_NONE);
+    };
