@@ -88,6 +88,7 @@ void StateMachine::onExit(SaurconState state) {
 
 void StateMachine::onEnter_STARTUP_SCON() {
     led.setLEDState(LEDState::OFF, LEDState::OFF, LEDState::OFF);
+    imu.begin();
     vTaskDelay(pdMS_TO_TICKS(500));
 }
 
