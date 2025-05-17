@@ -3,9 +3,13 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
+#include "imu.h"
+
 class StateMachine;
 
 extern StateMachine* stateMachine;
+
+extern IMU imu;
 
 // Shared control variables (protected by controlDataMutex)
 extern float velCommand;

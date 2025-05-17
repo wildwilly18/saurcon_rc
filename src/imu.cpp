@@ -1,11 +1,14 @@
 #include "imu.h"
+#include "shared_resources.h"
 
 IMU::IMU(uint8_t i2c_addr) : address(i2c_addr) {
     imuDataMutex = xSemaphoreCreateMutex();
 }
 
+// Initializes the IMU. Returns true if initialization is successful and the IMU is ready to use, 
+// otherwise returns false if initialization fails.
 bool IMU::begin() {
-    Wire.begin(); // Adjust SDA/SCL pins as needed
+    Wire.begin(); // Adjust SDA/SCL pins by passing pin numbers to Wire.begin(SDA, SCL) if required
     vTaskDelay(pdMS_TO_TICKS(2000));
     
     bool status = mpu.setup(address);
@@ -13,7 +16,7 @@ bool IMU::begin() {
     if(status){
         xTaskCreate(imu_update_task, "imu_update_task", 2048, this, 1, &imuTaskHandle);
     }
-    
+
     return status;
 }
 
@@ -44,7 +47,7 @@ void IMU::imu_update_task(void *param) {
     while(true){
         self->update();
 
-        vTaskDelay(pdMS_TO_TICKS(10)); //100 hz 
+        vTaskDelay(pdMS_TO_TICKS(33)); //100 hz 
     }
     
 }

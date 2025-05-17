@@ -1,4 +1,5 @@
 #include "display.h"
+#include "imu.h"
 #include "shared_resources.h"
 
 DisplayManager::DisplayManager() : currentDisplayState(STARTUP_DISPLAY) {
@@ -50,6 +51,26 @@ void DisplayManager::display_update_task(void *pvParameters) {
                 display->u8g2.drawStr(85, 40, display->formattedSetVEL);
                 display->u8g2.drawStr(25, 55, "STATE: RUN");
                 break;
+
+            case IMU_DISPLAY:
+            float ax, ay, az;
+            float gx, gy, gz;
+
+            imu.getAccel(ax, ay, az);
+            imu.getGyro(gx, gy, gz);
+        
+            display->u8g2.drawStr(0, 10, "______SauRCon_______");
+            display->u8g2.drawStr(0, 25, "AZ:");
+            display->u8g2.drawStr(0, 40, "GZ:");
+            // Format values if needed
+            char azStr[12], gzStr[12];
+            sprintf(azStr, "%2.2f", az);
+            sprintf(gzStr, "%2.2f", gz);
+            display->u8g2.drawStr(35, 25, azStr);
+            display->u8g2.drawStr(35, 40, gzStr);
+            display->u8g2.drawStr(25, 55, "STATE: IMU");
+            break;
+                
 
             case ENCODER_DISPLAY:
                 if (xSemaphoreTake(encoderDataMutex, portMAX_DELAY) == pdTRUE) {

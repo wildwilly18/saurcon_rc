@@ -1,6 +1,7 @@
 #include "shared_resources.h"
 
 StateMachine* stateMachine = nullptr;
+IMU imu;
 
 //Control variables
 float velCommand = 0.0f;

@@ -7,6 +7,8 @@ StateMachine::StateMachine() {
     currentState = STARTUP_SCON;
     previousState = NO_STATE_SCON;
 
+    imu.begin();
+
     display.init();
     display.startTask();
 
@@ -88,7 +90,6 @@ void StateMachine::onExit(SaurconState state) {
 
 void StateMachine::onEnter_STARTUP_SCON() {
     led.setLEDState(LEDState::OFF, LEDState::OFF, LEDState::OFF);
-    imu.begin();
     vTaskDelay(pdMS_TO_TICKS(500));
 }
 
@@ -126,7 +127,7 @@ void StateMachine::handle_SETUP_SCON() {
 
 void StateMachine::onEnter_RUN_SCON() {
     led.setLEDState(LEDState::OFF, LEDState::ON, LEDState::BLINK_SLOW);
-    display.setState(ENCODER_DISPLAY);
+    display.setState(IMU_DISPLAY);
 }
 
 void StateMachine::handle_RUN_SCON() {
