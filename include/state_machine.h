@@ -8,6 +8,7 @@
 #include "ros_interface.h"
 #include "motor_control.h"
 #include "encoder.h"
+#include "saurcon_LED.h"
 
 #include "types/saurcon_enums.h"
 
@@ -27,6 +28,7 @@ private:
     SemaphoreHandle_t stateMutex;
 
     DisplayManager display;
+    LEDManager led;
 
     void onEnter(SaurconState state);
     void onExit(SaurconState state);

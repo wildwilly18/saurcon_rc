@@ -11,4 +11,3 @@ float filteredRPM = 0.0f;
 SemaphoreHandle_t encoderDataMutex = nullptr;
 SemaphoreHandle_t controlDataMutex = nullptr;
 TaskHandle_t ros_executor_task_handle = nullptr;
-

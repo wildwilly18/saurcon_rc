@@ -23,6 +23,14 @@ enum DisplayState {
     FAULT_DISPLAY
 };
 
+// Display LED states
+enum class LEDState {
+    OFF = 0,
+    ON,
+    BLINK_FAST,
+    BLINK_SLOW
+};
+
 // Fault types
 enum SaurconFaults {
     NONE = 0,                  // No fault

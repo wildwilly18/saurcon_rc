@@ -9,6 +9,8 @@ StateMachine::StateMachine() {
 
     display.init();
     display.startTask();
+
+    led.init();
 }
 
 void StateMachine::setState(SaurconState nextState) {
@@ -85,17 +87,17 @@ void StateMachine::onExit(SaurconState state) {
 // --- Individual State Methods ---
 
 void StateMachine::onEnter_STARTUP_SCON() {
-
+    led.setLEDState(LEDState::OFF, LEDState::OFF, LEDState::OFF);
+    vTaskDelay(pdMS_TO_TICKS(500));
 }
 
 void StateMachine::handle_STARTUP_SCON() {
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    vTaskDelay(pdMS_TO_TICKS(500));
     setState(STARTUP_ROS_SCON);
 }
 
 void StateMachine::onEnter_STARTUP_ROS_SCON() {
-    digitalWrite(LED_RED, HIGH);
-    digitalWrite(LED_GRN, LOW);
+    led.setLEDState(LEDState::ON, LEDState::OFF, LEDState::BLINK_FAST);
     init_ROS();
     if (!ros_executor_task_handle) {
         xTaskCreate(ros_executor_task, "ros_executor_task", 4096, NULL, 1, &ros_executor_task_handle);
@@ -122,9 +124,8 @@ void StateMachine::handle_SETUP_SCON() {
 }
 
 void StateMachine::onEnter_RUN_SCON() {
+    led.setLEDState(LEDState::OFF, LEDState::ON, LEDState::BLINK_SLOW);
     display.setState(ENCODER_DISPLAY);
-    digitalWrite(LED_RED, LOW);
-    digitalWrite(LED_GRN, HIGH);
 }
 
 void StateMachine::handle_RUN_SCON() {
@@ -136,6 +137,7 @@ void StateMachine::onExit_RUN_SCON() {
 }
 
 void StateMachine::onEnter_FAULT_SCON() {
+    led.setLEDState(LEDState::ON, LEDState::BLINK_FAST, LEDState::OFF);
     display.setState(FAULT_DISPLAY);
 }
 
@@ -144,10 +146,14 @@ void StateMachine::handle_FAULT_SCON() {
 }
 
 void StateMachine::onEnter_FAULT_ROS_SCON() {
+    led.setLEDState(LEDState::ON, LEDState::OFF, LEDState::BLINK_FAST);
     display.setState(FAULT_DISPLAY);
+    vTaskDelay(pdMS_TO_TICKS(3000));
 }
 
 void StateMachine::handle_FAULT_ROS_SCON() {
-    vTaskDelay(pdMS_TO_TICKS(3000));
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    led.setLEDState(LEDState::ON, LEDState::OFF, LEDState::OFF);
+    vTaskDelay(pdMS_TO_TICKS(2000));
     ESP.restart();
 }

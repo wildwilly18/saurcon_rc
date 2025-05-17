@@ -51,8 +51,6 @@ void task_motion_control(void *pv){
             {
                 stateMachine->setFault(ROS_CONNECTION_LOSS);
                 set_servo(servo_angle);
-                digitalWrite(LED_RED, HIGH);
-                // Handle timeout case here, e.g., set servo to a default position
             }
         }
         
@@ -73,11 +71,11 @@ void init_servo()
     SteerServo.attach(SERVO_PIN);
 
     set_servo(90);
-    vTaskDelay(pdMS_TO_TICKS(400));
+    vTaskDelay(pdMS_TO_TICKS(500));
     set_servo(180);
-    vTaskDelay(pdMS_TO_TICKS(400));
+    vTaskDelay(pdMS_TO_TICKS(500));
     set_servo(0);
-    vTaskDelay(pdMS_TO_TICKS(400));
+    vTaskDelay(pdMS_TO_TICKS(500));
     set_servo(90);
 }
 
@@ -102,9 +100,8 @@ void init_throttle()
         return;
     }
 
-    // STEP 1A: Send MAX throttle and monitor RPM
+    // STEP 1A: Send some throttle and monitor RPM
     set_throttle(1600);
-    digitalWrite(LED_RED, LOW);
 
     const int check_duration_ms = 1000;
     const int sample_interval_ms = 10;
@@ -133,13 +130,10 @@ void init_throttle()
 
     // STEP 2: Send MIN throttle
     set_throttle(1000);
-    digitalWrite(LED_GRN, LOW);
     vTaskDelay(pdMS_TO_TICKS(4000));
 
     // STEP 3: Neutral throttle to finish
     set_throttle(1500);
-    digitalWrite(LED_RED, HIGH);
-    digitalWrite(LED_GRN, HIGH);
 }
 
 void set_servo(uint32_t angle)
