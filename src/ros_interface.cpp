@@ -23,7 +23,7 @@ void init_ROS(){
     //Setup control data mutex
     controlDataMutex = xSemaphoreCreateMutex();
     if(controlDataMutex == NULL){
-        digitalWrite(LED_PIN, LOW);
+        //digitalWrite(LED_PIN, LOW);
         error_loop();
     }
 

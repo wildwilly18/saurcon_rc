@@ -7,6 +7,9 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
+#include "types/saurcon_parameters.h"
+#include "pins.h"
+
 class IMU {
 public:
     IMU(uint8_t i2c_addr = 0x68);

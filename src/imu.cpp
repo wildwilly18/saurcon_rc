@@ -8,10 +8,8 @@ IMU::IMU(uint8_t i2c_addr) : address(i2c_addr) {
 // Initializes the IMU. Returns true if initialization is successful and the IMU is ready to use, 
 // otherwise returns false if initialization fails.
 bool IMU::begin() {
-    Wire.begin(); // Adjust SDA/SCL pins by passing pin numbers to Wire.begin(SDA, SCL) if required
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    
     bool status = mpu.setup(address);
+    pinMode(LED_BUILTIN, OUTPUT);
 
     if(status){
         xTaskCreate(imu_update_task, "imu_update_task", 2048, this, 1, &imuTaskHandle);
@@ -21,39 +19,44 @@ bool IMU::begin() {
 }
 
 void IMU::update() {
-    if(!mpu.update()) return;
+    //if(!mpu.update()) return;
+    bool ok = mpu.update();
 
-    if(xSemaphoreTake(imuDataMutex, (TickType_t)10) == pdTRUE) {
-        imuData.ax = mpu.getAccX();
-        imuData.ay = mpu.getAccY();
-        imuData.az = mpu.getAccZ();
+    if(ok){
+        if(xSemaphoreTake(imuDataMutex, pdMS_TO_TICKS(5))== pdTRUE) {
+            imuData.ax = mpu.getAccX();
+            imuData.ay = mpu.getAccY();
+            imuData.az = mpu.getAccZ();
 
-        imuData.gx = mpu.getGyroX();
-        imuData.gy = mpu.getGyroY();
-        imuData.gz = mpu.getGyroZ();
+            imuData.gx = mpu.getGyroX();
+            imuData.gy = mpu.getGyroY();
+            imuData.gz = mpu.getGyroZ();
 
-        imuData.mx = mpu.getMagX();
-        imuData.my = mpu.getMagY();
-        imuData.mz = mpu.getMagZ();
+            imuData.mx = mpu.getMagX();
+            imuData.my = mpu.getMagY();
+            imuData.mz = mpu.getMagZ();
 
-        xSemaphoreGive(imuDataMutex);
+            xSemaphoreGive(imuDataMutex);
+        }
     }
+    
+    //digitalWrite(LED_BUILTIN, ok ? HIGH : LOW);   
 }
 
 void IMU::imu_update_task(void *param) {
     //task to update the imu values
     IMU* self = static_cast<IMU*>(param);
 
-    while(true){
-        self->update();
-
-        vTaskDelay(pdMS_TO_TICKS(33)); //100 hz 
-    }
-    
+    while (true) {
+        if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            self->update();
+            xSemaphoreGive(i2cMutex);
+        }
+    }    
 }
 
 void IMU::getAccel(float& ax, float& ay, float& az) {
-    if (xSemaphoreTake(imuDataMutex, (TickType_t)10) == pdTRUE) {
+    if (xSemaphoreTake(imuDataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
         ax = imuData.ax;
         ay = imuData.ay;
         az = imuData.az;
@@ -62,7 +65,7 @@ void IMU::getAccel(float& ax, float& ay, float& az) {
 }
 
 void IMU::getGyro(float& gx, float& gy, float& gz) {
-    if (xSemaphoreTake(imuDataMutex, (TickType_t)10) == pdTRUE) {
+    if (xSemaphoreTake(imuDataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
         gx = imuData.gx;
         gy = imuData.gy;
         gz = imuData.gz;
@@ -71,7 +74,7 @@ void IMU::getGyro(float& gx, float& gy, float& gz) {
 }
 
 void IMU::getMag(float& mx, float& my, float& mz) {
-    if (xSemaphoreTake(imuDataMutex, (TickType_t)10) == pdTRUE) {
+    if (xSemaphoreTake(imuDataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
         mx = imuData.mx;
         my = imuData.my;
         mz = imuData.mz;

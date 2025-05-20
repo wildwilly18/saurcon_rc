@@ -30,7 +30,6 @@ private:
 
     DisplayManager display;
     LEDManager led;
-    IMU imu;
 
     void onEnter(SaurconState state);
     void onExit(SaurconState state);

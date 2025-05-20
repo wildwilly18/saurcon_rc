@@ -1,4 +1,5 @@
 #include "state_machine.h"
+#include "shared_resources.h"
 #include "display.h"
 
 // Initialize the State Machine
@@ -7,10 +8,17 @@ StateMachine::StateMachine() {
     currentState = STARTUP_SCON;
     previousState = NO_STATE_SCON;
 
-    imu.begin();
+    Wire.begin(SDA_PIN, SCL_PIN);
+
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
+    i2cMutex = xSemaphoreCreateMutex();
 
     display.init();
     display.startTask();
+
+    imu = new IMU(0x68);
+    imu->begin();
 
     led.init();
 }
@@ -121,7 +129,7 @@ void StateMachine::handle_SETUP_SCON() {
     init_pwm();
     init_servo();
     init_throttle();
-    xTaskCreate(task_motion_control, "task_motion_control", 2048, NULL, 2, NULL);
+    xTaskCreate(task_motion_control, "task_motion_control", 2048, NULL, 1, NULL);
     setState(RUN_SCON);
 }
 

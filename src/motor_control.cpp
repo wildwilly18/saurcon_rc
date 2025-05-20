@@ -27,7 +27,7 @@ void task_motion_control(void *pv){
             localState = stateMachine->getState();
         }
         
-        if(xQueueReceive(controlQueue, &receivedCommand, pdMS_TO_TICKS(200))){
+        if(xQueueReceive(controlQueue, &receivedCommand, pdMS_TO_TICKS(3000))){
             servo_angle_mapped = map_steering(receivedCommand.steer);
             throttle_mapped    = map_throttle(receivedCommand.throttle);
 
@@ -173,8 +173,8 @@ uint32_t map_steering(float steerValue)
     // Clamp input to [-1.0, 1.0]
     steerValue = constrain(steerValue, -1.0f, 1.0f);
 
-    // Map to [0, 180]
-    return (uint32_t)((steerValue + 1.0f) * 90.0f);  // (-1 maps to 0, 0 to 90, 1 to 180)
+    // Map to [180, 0]
+    return (uint32_t)((1.0f - steerValue) * 90.0f);  // (-1 maps to 180, 0 to 90, 1 to 0)
 }
 
 void write_esc_us(uint32_t microseconds){

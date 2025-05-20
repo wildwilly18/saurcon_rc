@@ -8,8 +8,7 @@
 class StateMachine;
 
 extern StateMachine* stateMachine;
-
-extern IMU imu;
+extern IMU* imu;
 
 // Shared control variables (protected by controlDataMutex)
 extern float velCommand;
@@ -20,6 +19,7 @@ extern float filteredRPM;
 
 extern SemaphoreHandle_t encoderDataMutex;
 extern SemaphoreHandle_t controlDataMutex;
+extern SemaphoreHandle_t i2cMutex;
 extern TaskHandle_t ros_executor_task_handle;
 
 

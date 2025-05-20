@@ -1,11 +1,5 @@
 #pragma once
 
-#ifdef LED_BUILTIN
-#define LED_PIN LED_BUILTIN
-#else
-#define LED_PIN 13
-#endif
-
 // Servo Out Pin
 #define ESC_PIN    19
 #define SERVO_PIN  18
@@ -14,6 +8,8 @@
 #define LED_RED 25
 #define LED_GRN 33
 #define LED_YEL 32
+#define LED_PIN 13
+#define LED_BUILTIN 2
 
 //Pins for hall sensor
 #define A_PIN 13

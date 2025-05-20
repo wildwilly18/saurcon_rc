@@ -15,3 +15,6 @@
 
 // Physical Parameters
 #define WHEEL_RADIUS 33
+
+//Addresses
+#define MPU_9250_ADDRESS 0x68
