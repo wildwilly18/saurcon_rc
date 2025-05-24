@@ -81,3 +81,13 @@ void IMU::getMag(float& mx, float& my, float& mz) {
         xSemaphoreGive(imuDataMutex);
     }
 }
+
+void IMU::getQuaternion(float& qx, float& qy, float& qz, float& qw) {
+    if (xSemaphoreTake(imuDataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
+        qx = mpu.getQuaternionX();
+        qy = mpu.getQuaternionY();
+        qz = mpu.getQuaternionZ();
+        qw = mpu.getQuaternionW();
+        xSemaphoreGive(imuDataMutex);
+    }
+}

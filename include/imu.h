@@ -22,6 +22,7 @@ public:
     void getAccel(float& ax, float& ay, float& az);
     void getGyro(float& gx, float& gy, float& gz);
     void getMag(float& mx, float& my, float& mz);
+    void getQuaternion(float& qx, float& qy, float& qz, float& qw);
 
 private:
     MPU9250 mpu;
@@ -31,6 +32,7 @@ private:
         float ax, ay, az;
         float gx, gy, gz;
         float mx, my, mz;
+        float qx, qy, qz, qw;
     } imuData;
 
     uint8_t address;

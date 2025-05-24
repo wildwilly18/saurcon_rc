@@ -20,6 +20,7 @@ extern float filteredRPM;
 extern SemaphoreHandle_t encoderDataMutex;
 extern SemaphoreHandle_t controlDataMutex;
 extern SemaphoreHandle_t i2cMutex;
-extern TaskHandle_t ros_executor_task_handle;
+extern TaskHandle_t ros_subscriber_task_handle;
+extern TaskHandle_t ros_publisher_task_handle;
 
 

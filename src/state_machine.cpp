@@ -109,8 +109,12 @@ void StateMachine::handle_STARTUP_SCON() {
 void StateMachine::onEnter_STARTUP_ROS_SCON() {
     led.setLEDState(LEDState::ON, LEDState::OFF, LEDState::BLINK_FAST);
     init_ROS();
-    if (!ros_executor_task_handle) {
-        xTaskCreate(ros_executor_task, "ros_executor_task", 4096, NULL, 1, &ros_executor_task_handle);
+    if (!ros_subscriber_task_handle) {
+        xTaskCreate(ros_subscriber_task, "ros_subscriber_task", 4096, NULL, 1, &ros_subscriber_task_handle);
+    }
+
+    if(!ros_publisher_task_handle){
+        xTaskCreate(ros_publisher_task, "ros_publisher_task", 4096, NULL, 1, &ros_publisher_task_handle);
     }
 }
 
