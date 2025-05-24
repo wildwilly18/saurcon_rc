@@ -14,6 +14,7 @@
 #include <rclc/executor.h>
 
 // Types
+#include <std_msgs/msg/u_int8.h>
 #include <geometry_msgs/msg/twist.h>
 #include <sensor_msgs/msg/imu.h>
 #include <sensor_msgs/msg/magnetic_field.h>
@@ -34,10 +35,16 @@
 
 //Micro-Ros objects
 extern rcl_subscription_t subscriber;
-extern rcl_publisher_t imu_publisher;
+extern rcl_subscription_t control_subscriber;
+
+extern rcl_publisher_t imu_pub;
+extern rcl_publisher_t mag_pub;
+extern rcl_publisher_t state_pub;
+
 extern geometry_msgs__msg__Twist msg;
 extern sensor_msgs__msg__Imu msg_imu;
 extern sensor_msgs__msg__MagneticField msg_mag;
+
 extern rclc_executor_t executor;
 extern rclc_support_t support;
 extern rcl_allocator_t allocator;
@@ -51,6 +58,7 @@ void watchdog_ros_callback(TimerHandle_t xTimer);
 void error_loop();
 void subscription_callback(const void * msgin);
 void ros_subscriber_task(void *pvParameters);
-void ros_publisher_task(void *pvParameters);
+void ros_sensor_publisher_task(void *pvParameters);
+void ros_state_publisher_task(void *pvParameters);
 void fill_msg_header(std_msgs__msg__Header &header, const char *frame_id_str);
 builtin_interfaces__msg__Time get_time();

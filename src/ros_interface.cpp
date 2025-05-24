@@ -6,10 +6,13 @@ TimerHandle_t watchdog_ros_timer;
 
 //Micro-Ros objects
 rcl_subscription_t subscriber;
+rcl_subscription_t control_subscriber;
 rcl_publisher_t imu_pub;
 rcl_publisher_t mag_pub;
+rcl_publisher_t state_pub;
 
 // Message objects
+std_msgs__msg__UInt8 state_msg;
 geometry_msgs__msg__Twist msg;
 sensor_msgs__msg__Imu msg_imu;
 sensor_msgs__msg__MagneticField msg_mag;
@@ -51,7 +54,7 @@ void init_ROS(){
     
     // create subscriber with best-effort Qos
     RCCHECK(rclc_subscription_init_best_effort(
-        &subscriber,
+        &control_subscriber,
         &node,
         ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
         "ctrl_output"));
@@ -70,9 +73,17 @@ void init_ROS(){
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, MagneticField),
       "imu/mag"));
 
+    // create state Publisher
+    RCCHECK(rclc_publisher_init_default(
+      &state_pub,
+      &node,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, UInt8),
+      "saurcon/state"
+    ));
+
     // create executor
-    RCCHECK(rclc_executor_init(&executor, &support.context, 1, &ros_allocator));
-    RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
+    RCCHECK(rclc_executor_init(&executor, &support.context, 2, &ros_allocator));
+    RCCHECK(rclc_executor_add_subscription(&executor, &control_subscriber, &msg, &subscription_callback, ON_NEW_DATA));
     //setup_watchdog_ros_timer();
 }
 
@@ -131,7 +142,7 @@ void ros_subscriber_task(void *pvParameters)
 {
   while(1) {
     // Spin the executor to process incoming messages with a timeout
-    rcl_ret_t ret = rclc_executor_spin_some(&executor, RCL_MS_TO_NS(50));
+    rcl_ret_t ret = rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
 
     if (ret != RCL_RET_OK) {stateMachine->setFault(ROS_CONNECTION_LOSS);}
 
@@ -139,8 +150,19 @@ void ros_subscriber_task(void *pvParameters)
   }
 }
 
-// uRos Publish Task
-void ros_publisher_task(void *pvParameters)
+// uRos State Publish Task
+void ros_state_publisher_task(void *pvParameters)
+{
+  while(1){
+    state_msg.data = static_cast<uint8_t>(stateMachine->getState());
+
+    rcl_ret_t ok_pub = rcl_publish(&state_pub, &state_msg, NULL);
+
+    vTaskDelay(pdMS_TO_TICKS(50));
+  }
+}
+// uRos Sensor Publish Task
+void ros_sensor_publisher_task(void *pvParameters)
 {
   while(1){
     imu->update(); // semaphore protected call

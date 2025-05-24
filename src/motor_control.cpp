@@ -33,7 +33,8 @@ void task_motion_control(void *pv){
 
             switch (localState)
             {
-            case RUN_SCON:
+            case SaurconState::RUN_AUTONOMOUS:
+            case SaurconState::RUN_CONTROL:
                 servo_angle_mapped = map_steering(receivedCommand.steer);
 
                 set_servo(servo_angle_mapped);

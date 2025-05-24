@@ -35,17 +35,29 @@ private:
     void onExit(SaurconState state);
     void handle(SaurconState state);
 
-    void onEnter_STARTUP_SCON();
-    void handle_STARTUP_SCON();
-    void onEnter_STARTUP_ROS_SCON();
-    void handle_STARTUP_ROS_SCON();
-    void onEnter_SETUP_SCON();
-    void handle_SETUP_SCON();
-    void onEnter_RUN_SCON();
-    void handle_RUN_SCON();
-    void onExit_RUN_SCON();
-    void onEnter_FAULT_SCON();
-    void handle_FAULT_SCON();
-    void onEnter_FAULT_ROS_SCON();
-    void handle_FAULT_ROS_SCON();
+    void onEnter_STARTUP();
+    void handle_STARTUP();
+
+    void onEnter_STARTUP_ROS();
+    void handle_STARTUP_ROS();
+
+    void onEnter_SETUP();
+    void handle_SETUP();
+
+    void onEnter_STANDBY();
+    void handle_STANDBY();
+
+    void onEnter_RUN_CONTROL();
+    void handle_RUN_CONTROL();
+    void onExit_RUN_CONTROL();
+
+    void onEnter_RUN_AUTONOMOUS();
+    void handle_RUN_AUTONOMOUS();
+    void onExit_RUN_AUTONOMOUS();
+
+    void onEnter_FAULT();
+    void handle_FAULT();
+    
+    void onEnter_FAULT_ROS();
+    void handle_FAULT_ROS();
 };

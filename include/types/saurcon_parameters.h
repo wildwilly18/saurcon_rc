@@ -14,7 +14,10 @@
 #define MAX_RUN_ESC_PWM (uint32_t)1600
 
 // Physical Parameters
-#define WHEEL_RADIUS 33
+#define WHEEL_RADIUS 0.033f
+#define ENCODER_TICKS_PER_REV 6
+#define GEAR_RATIO 3.14f
+#define TICKS_PER_WHEEL_REV (ENCODER_TICKS_PER_REV * GEAR_RATIO)
 
 //Addresses
 #define MPU_9250_ADDRESS 0x68

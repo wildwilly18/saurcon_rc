@@ -1,14 +1,16 @@
 #pragma once
 
 // Robot operating state machine states
-enum SaurconState {
-    NO_STATE_SCON = 0,     // Initial or invalid state
-    STARTUP_SCON,          // Power-on init
-    STARTUP_ROS_SCON,      // ROS2 initialization
-    SETUP_SCON,            // Motor and encoder setup
-    RUN_SCON,              // Normal operation
-    FAULT_SCON,            // General fault state
-    FAULT_ROS_SCON         // ROS-specific fault
+enum class SaurconState : uint8_t {
+    NO_STATE = 0,     // Initial or invalid state
+    STARTUP,          // Power-on init
+    STARTUP_ROS,          // ROS2 initialization
+    SETUP,            // Motor and encoder setup
+    STANDBY,          // Startup complete wait for action
+    RUN_CONTROL,      // Operation via controller
+    RUN_AUTONOMOUS,   // Operation via raspi
+    FAULT,            // General fault state
+    FAULT_ROS         // ROS-specific fault
 };
 
 // Display rendering states

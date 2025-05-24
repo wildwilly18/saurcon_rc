@@ -38,9 +38,7 @@ void IMU::update() {
 
             xSemaphoreGive(imuDataMutex);
         }
-    }
-    
-    //digitalWrite(LED_BUILTIN, ok ? HIGH : LOW);   
+    }   
 }
 
 void IMU::imu_update_task(void *param) {
@@ -52,6 +50,7 @@ void IMU::imu_update_task(void *param) {
             self->update();
             xSemaphoreGive(i2cMutex);
         }
+        vTaskDelay(pdMS_TO_TICKS(50)); // Add a delay to avoid busy looping
     }    
 }
 
