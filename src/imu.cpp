@@ -9,7 +9,6 @@ IMU::IMU(uint8_t i2c_addr) : address(i2c_addr) {
 // otherwise returns false if initialization fails.
 bool IMU::begin() {
     bool status = mpu.setup(address);
-    pinMode(LED_BUILTIN, OUTPUT);
 
     if(status){
         xTaskCreate(imu_update_task, "imu_update_task", 2048, this, 1, &imuTaskHandle);

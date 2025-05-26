@@ -114,15 +114,15 @@ void StateMachine::onEnter_STARTUP_ROS() {
     led.setLEDState(LEDState::ON, LEDState::OFF, LEDState::BLINK_FAST);
     init_ROS();
     if (!ros_subscriber_task_handle) {
-        xTaskCreate(ros_subscriber_task, "ros_subscriber_task", 4096, NULL, 1, &ros_subscriber_task_handle);
+        xTaskCreate(ros_subscriber_task, "ros_subscriber_task", 4096, NULL, 2, &ros_subscriber_task_handle);
     }
 
     if(!ros_sensor_publisher_task_handle){
-        xTaskCreate(ros_sensor_publisher_task, "ros_sensor_publisher_task", 4096, NULL, 1, &ros_sensor_publisher_task_handle);
+        xTaskCreate(ros_sensor_publisher_task, "ros_sensor_publisher_task", 4096, NULL, 2, &ros_sensor_publisher_task_handle);
     }
 
     if(!ros_state_publisher_task_handle){
-        xTaskCreate(ros_state_publisher_task, "ros_state_publisher_task", 2048, NULL, 1, &ros_state_publisher_task_handle);
+        xTaskCreate(ros_state_publisher_task, "ros_state_publisher_task", 2048, NULL, 2, &ros_state_publisher_task_handle);
     }
 }
 
@@ -135,9 +135,9 @@ void StateMachine::onEnter_SETUP() {
 }
 
 void StateMachine::handle_SETUP() {
-    init_encoder_mutex();
-    init_encoder_isr();
-    xTaskCreatePinnedToCore(rpm_filter_task, "rpm_filter_task", 4096, NULL, 1, NULL, 1);
+    encoder = new Encoder(A_PIN, B_PIN, C_PIN);
+    encoder->begin();
+
     init_pwm();
     init_servo();
     init_throttle();
@@ -155,7 +155,7 @@ void StateMachine::handle_STANDBY(){
 
 void StateMachine::onEnter_RUN_CONTROL() {
     led.setLEDState(LEDState::OFF, LEDState::ON, LEDState::BLINK_SLOW);
-    display.setState(IMU_DISPLAY);
+    display.setState(ENCODER_DISPLAY);
 }
 
 void StateMachine::handle_RUN_CONTROL() {
@@ -168,7 +168,7 @@ void StateMachine::onExit_RUN_CONTROL() {
 
 void StateMachine::onEnter_RUN_AUTONOMOUS() {
     led.setLEDState(LEDState::OFF, LEDState::ON, LEDState::BLINK_SLOW);
-    display.setState(IMU_DISPLAY);
+    display.setState(ENCODER_DISPLAY);
 }
 
 void StateMachine::handle_RUN_AUTONOMOUS() {

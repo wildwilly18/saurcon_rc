@@ -10,6 +10,7 @@
 #include "encoder.h"
 #include "saurcon_LED.h"
 #include "imu.h"
+#include "encoder.h"
 
 #include "types/saurcon_enums.h"
 

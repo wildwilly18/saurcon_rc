@@ -73,11 +73,12 @@ void DisplayManager::display_update_task(void *pvParameters) {
                     
 
                 case ENCODER_DISPLAY:
-                    if (xSemaphoreTake(encoderDataMutex, portMAX_DELAY) == pdTRUE) {
-                        sprintf(display->formattedRPM, "%03.4f", filteredRPM);
-                        sprintf(display->formattedVEL, "%03.4f", filteredRPM);
-                        xSemaphoreGive(encoderDataMutex);
-                    }
+                    float ang_spd, lin_spd, dist;
+                    encoder->getWheelInfo(ang_spd, lin_spd, dist);
+
+                    sprintf(display->formattedRPM, "%03.4f", ang_spd);
+                    sprintf(display->formattedVEL, "%03.4f", lin_spd);
+
                     display->u8g2.drawStr(0, 10, "______SauRCon_______");
                     display->u8g2.drawStr(0, 25, "ENC RPM: ");
                     display->u8g2.drawStr(0, 40, "ENC VEL: ");

@@ -60,21 +60,21 @@ void init_ROS(){
         "ctrl_output"));
 
     // create IMU Publisher
-    RCCHECK(rclc_publisher_init_default(
+    RCCHECK(rclc_publisher_init_best_effort(
       &imu_pub,
       &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
       "imu/data_raw"));
     
     // create magnetometer Publisher
-    RCCHECK(rclc_publisher_init_default(
+    RCCHECK(rclc_publisher_init_best_effort(
       &mag_pub,
       &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, MagneticField),
       "imu/mag"));
 
     // create state Publisher
-    RCCHECK(rclc_publisher_init_default(
+    RCCHECK(rclc_publisher_init_best_effort(
       &state_pub,
       &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, UInt8),
@@ -158,7 +158,7 @@ void ros_state_publisher_task(void *pvParameters)
 
     rcl_ret_t ok_pub = rcl_publish(&state_pub, &state_msg, NULL);
 
-    vTaskDelay(pdMS_TO_TICKS(50));
+    vTaskDelay(pdMS_TO_TICKS(20));
   }
 }
 // uRos Sensor Publish Task

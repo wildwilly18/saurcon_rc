@@ -4,20 +4,18 @@
 #include <freertos/semphr.h>
 
 #include "imu.h"
+#include "encoder.h"
 
 class StateMachine;
 
 extern StateMachine* stateMachine;
 extern IMU* imu;
+extern Encoder* encoder;
 
 // Shared control variables (protected by controlDataMutex)
 extern float velCommand;
 extern float steerCommand;
 
-// Shared encoder data (protected by encoderDataMutex)
-extern float filteredRPM;
-
-extern SemaphoreHandle_t encoderDataMutex;
 extern SemaphoreHandle_t controlDataMutex;
 extern SemaphoreHandle_t i2cMutex;
 extern TaskHandle_t ros_subscriber_task_handle;

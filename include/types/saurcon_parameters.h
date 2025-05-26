@@ -15,7 +15,7 @@
 
 // Physical Parameters
 #define WHEEL_RADIUS 0.033f
-#define ENCODER_TICKS_PER_REV 6
+#define ENCODER_TICKS_PER_REV 6.0f
 #define GEAR_RATIO 3.14f
 #define TICKS_PER_WHEEL_REV (ENCODER_TICKS_PER_REV * GEAR_RATIO)
 

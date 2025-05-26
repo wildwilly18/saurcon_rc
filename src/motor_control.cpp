@@ -91,10 +91,7 @@ void init_throttle()
     float motor_rpm = 0;
 
     // Check if already spinning before attempting calibration
-    if(xSemaphoreTake(encoderDataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-        motor_rpm = filteredRPM;
-        xSemaphoreGive(encoderDataMutex);
-    }
+    motor_rpm = encoder->getFilteredRPM();
 
     if (fabs(motor_rpm) > 10.0) {
         // ESC already armed or spinning — skip calibration
@@ -109,16 +106,11 @@ void init_throttle()
     const int max_checks = check_duration_ms / sample_interval_ms;
 
     for (int i = 0; i < max_checks; ++i) {
-        if(xSemaphoreTake(encoderDataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-            motor_rpm = filteredRPM;
-            xSemaphoreGive(encoderDataMutex);
-        }
+        motor_rpm = encoder->getFilteredRPM();
 
         if (fabs(motor_rpm) > 10.0) {
             // Motor responded — assume ESC already calibrated
             set_throttle(1500);
-            digitalWrite(LED_RED, HIGH);
-            digitalWrite(LED_GRN, HIGH);
             return;
         }
 
