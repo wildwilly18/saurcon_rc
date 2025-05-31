@@ -125,7 +125,7 @@ void subscription_callback(const void * msgin)
   if(xSemaphoreTake(controlDataMutex, portMAX_DELAY) == pdTRUE)
   {
     // Extract the velocity and steering commands from the message
-    velCommand = msg->linear.x;
+    velCommand   = msg->linear.x;
     steerCommand = msg->angular.z;
 
     cmd.steer    = steerCommand;

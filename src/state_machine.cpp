@@ -131,7 +131,7 @@ void StateMachine::handle_STARTUP_ROS() {
 }
 
 void StateMachine::onEnter_SETUP() {
-    //display.setState(STARTUP_DISPLAY);
+    display.setState(STARTUP_DISPLAY);
 }
 
 void StateMachine::handle_SETUP() {
