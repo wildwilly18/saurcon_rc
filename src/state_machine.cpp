@@ -7,6 +7,8 @@ StateMachine::StateMachine() {
     stateMutex = xSemaphoreCreateMutex();
     currentState = SaurconState::STARTUP;
     previousState = SaurconState::NO_STATE;
+    commandedState = SaurconState::STARTUP;
+    currentFault = SaurconFaults::NONE;
 
     Wire.begin(SDA_PIN, SCL_PIN);
 
@@ -17,10 +19,11 @@ StateMachine::StateMachine() {
     display.init();
     display.startTask();
 
-    imu = new IMU(0x68);
-    imu->begin();
+    //imu = new IMU(0x68);
+    //imu->begin();
 
     led.init();
+
 }
 
 void StateMachine::setState(SaurconState nextState) {
@@ -34,7 +37,15 @@ void StateMachine::setState(SaurconState nextState) {
 
 void StateMachine::setFault(SaurconFaults fault) {
     if (xSemaphoreTake(stateMutex, 10) == pdTRUE) {
-        currentState = (fault == ROS_CONNECTION_LOSS) ? SaurconState::FAULT_ROS : SaurconState::FAULT;
+        currentFault = fault;
+        currentState = SaurconState::FAULT;
+        xSemaphoreGive(stateMutex);
+    }
+}
+
+void StateMachine::setCommandState(SaurconState cmd) {
+    if (xSemaphoreTake(stateMutex, 10) == pdTRUE) {
+        commandedState = cmd;
         xSemaphoreGive(stateMutex);
     }
 }
@@ -43,6 +54,24 @@ SaurconState StateMachine::getState() {
     SaurconState state;
     if (xSemaphoreTake(stateMutex, 10) == pdTRUE) {
         state = currentState;
+        xSemaphoreGive(stateMutex);
+    }
+    return state;
+}
+
+SaurconFaults StateMachine::getFault() {
+    SaurconFaults fault;
+    if (xSemaphoreTake(stateMutex, 10) == pdTRUE) {
+        fault = currentFault;
+        xSemaphoreGive(stateMutex);
+    }
+    return fault;
+}
+
+SaurconState StateMachine::getCommandedState() {
+    SaurconState state;
+    if (xSemaphoreTake(stateMutex, 10) == pdTRUE) {
+        state = commandedState;
         xSemaphoreGive(stateMutex);
     }
     return state;
@@ -77,6 +106,13 @@ void StateMachine::onEnter(SaurconState state) {
     }
 }
 
+void StateMachine::onExit(SaurconState state) {
+    switch (state) {
+        case SaurconState::RUN_CONTROL: onExit_RUN_CONTROL(); break;
+        default: break; // No exit behavior for other states yet
+    }
+}
+
 void StateMachine::handle(SaurconState state) {
     switch (state) {
         case SaurconState::STARTUP: handle_STARTUP(); break;
@@ -89,12 +125,24 @@ void StateMachine::handle(SaurconState state) {
         case SaurconState::FAULT_ROS: handle_FAULT_ROS(); break;
         default: break;
     }
+
+    if(checkStateCommandChange() && isExternalCommandAllowed(StateMachine::getState(), StateMachine::getCommandedState()))
+    { StateMachine::setState(StateMachine::getCommandedState());}
 }
 
-void StateMachine::onExit(SaurconState state) {
-    switch (state) {
-        case SaurconState::RUN_CONTROL: onExit_RUN_CONTROL(); break;
-        default: break; // No exit behavior for other states yet
+bool StateMachine::checkStateCommandChange(){
+    SaurconState current_state = StateMachine::getState();
+    SaurconState commanded_state = StateMachine::getCommandedState();
+
+    return (current_state != commanded_state) ? true : false;
+}
+
+bool StateMachine::isExternalCommandAllowed(SaurconState current, SaurconState cmd) {
+    switch(current) {
+        case SaurconState::STANDBY:        return true;
+        case SaurconState::RUN_AUTONOMOUS: return true;
+        case SaurconState::RUN_CONTROL:    return true;
+        default: return false;
     }
 }
 
@@ -111,22 +159,33 @@ void StateMachine::handle_STARTUP() {
 }
 
 void StateMachine::onEnter_STARTUP_ROS() {
-    led.setLEDState(LEDState::ON, LEDState::OFF, LEDState::BLINK_FAST);
+    //led.setLEDState(LEDState::ON, LEDState::OFF, LEDState::BLINK_FAST);
+    display.setState(ROS_STARTUP_DISPLAY);
+
     init_ROS();
-    if (!ros_subscriber_task_handle) {
-        xTaskCreate(ros_subscriber_task, "ros_subscriber_task", 4096, NULL, 2, &ros_subscriber_task_handle);
+
+    if (!ros_ctrl_sub_task_handle) {
+        xTaskCreatePinnedToCore(ros_ctrl_sub_task, "ros_ctrl_sub_task", 4096, NULL, 3, &ros_ctrl_sub_task_handle, 0);
     }
 
-    if(!ros_sensor_publisher_task_handle){
-        xTaskCreate(ros_sensor_publisher_task, "ros_sensor_publisher_task", 4096, NULL, 2, &ros_sensor_publisher_task_handle);
+    if (!ros_state_sub_task_handle) {
+        xTaskCreatePinnedToCore(ros_state_sub_task, "ros_state_sub_task", 2048, NULL, 2, &ros_state_sub_task_handle, 0);
     }
+
+    //if(!ros_sensor_publisher_task_handle){
+    //    xTaskCreate(ros_sensor_publisher_task, "ros_sensor_publisher_task", 8192, NULL, 1, &ros_sensor_publisher_task_handle);
+    //}
 
     if(!ros_state_publisher_task_handle){
-        xTaskCreate(ros_state_publisher_task, "ros_state_publisher_task", 2048, NULL, 2, &ros_state_publisher_task_handle);
+        xTaskCreate(ros_state_publisher_task, "ros_state_publisher_task", 4096, NULL, 2, &ros_state_publisher_task_handle);
     }
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    setup_watchdog_ros_timer();
 }
 
 void StateMachine::handle_STARTUP_ROS() {
+    
     setState(SaurconState::SETUP);
 }
 
@@ -141,25 +200,28 @@ void StateMachine::handle_SETUP() {
     init_pwm();
     init_servo();
     init_throttle();
-    xTaskCreate(task_motion_control, "task_motion_control", 2048, NULL, 1, NULL);
-    setState(SaurconState::RUN_CONTROL);
+    xTaskCreatePinnedToCore(task_motion_control, "task_motion_control", 4096, NULL, 3, NULL,1);
+    setState(SaurconState::STANDBY);
 }
 
 void StateMachine::onEnter_STANDBY(){
-    //Placeholder
+    led.setLEDState(LEDState::OFF, LEDState::BLINK_SLOW, LEDState::BLINK_SLOW);
+    display.setState(STANDBY_DISPLAY);
 }
 
 void StateMachine::handle_STANDBY(){
-    //Placeholder
+    //Placeholder, wait to be sent elsewhere.
+    vTaskDelay(pdMS_TO_TICKS(100));
 }
 
 void StateMachine::onEnter_RUN_CONTROL() {
     led.setLEDState(LEDState::OFF, LEDState::ON, LEDState::BLINK_SLOW);
-    display.setState(ENCODER_DISPLAY);
+    display.setState(RUN_DISPLAY);
 }
 
 void StateMachine::handle_RUN_CONTROL() {
     // Placeholder for main loop operations
+    vTaskDelay(pdMS_TO_TICKS(100));
 }
 
 void StateMachine::onExit_RUN_CONTROL() {
@@ -180,17 +242,21 @@ void StateMachine::onExit_RUN_AUTONOMOUS() {
 }
 
 void StateMachine::onEnter_FAULT() {
-    led.setLEDState(LEDState::ON, LEDState::BLINK_FAST, LEDState::OFF);
-    display.setState(FAULT_DISPLAY);
+    led.setLEDState(LEDState::ON, LEDState::OFF, LEDState::OFF);
+    display.setFault(currentFault);
 }
 
 void StateMachine::handle_FAULT() {
     // Placeholder for fault handling logic
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    ESP.restart();
 }
 
+
+//Following to be deprecated handle all in fault.
 void StateMachine::onEnter_FAULT_ROS() {
     led.setLEDState(LEDState::ON, LEDState::OFF, LEDState::BLINK_FAST);
-    display.setState(FAULT_DISPLAY);
+    display.setFault(currentFault);
     vTaskDelay(pdMS_TO_TICKS(3000));
 }
 

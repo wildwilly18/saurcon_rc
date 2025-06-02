@@ -3,20 +3,22 @@
 
 //Setup a time handle
 TimerHandle_t watchdog_ros_timer;
+portMUX_TYPE rosTickMux = portMUX_INITIALIZER_UNLOCKED;
 
 //Micro-Ros objects
-rcl_subscription_t subscriber;
 rcl_subscription_t control_subscriber;
+rcl_subscription_t state_cmd_subscriber;
+
 rcl_publisher_t imu_pub;
 rcl_publisher_t mag_pub;
 rcl_publisher_t state_pub;
 
 // Message objects
 std_msgs__msg__UInt8 state_msg;
-geometry_msgs__msg__Twist msg;
+geometry_msgs__msg__Twist ctrl_msg;
 sensor_msgs__msg__Imu msg_imu;
 sensor_msgs__msg__MagneticField msg_mag;
-rclc_executor_t executor;
+rclc_executor_t exec_state, exec_ctrl;
 rclc_support_t support;
 rcl_allocator_t ros_allocator;
 rcl_node_t node;
@@ -25,7 +27,7 @@ rcl_timer_t timer;
 ControlCommand cmd;
 
 static volatile uint32_t last_msg_tick = 0;
-#define TIMEOUT_ROS_MS 120
+#define TIMEOUT_ROS_MS 1000
 char imu_frame_id_buffer[16] = "imu_link";
 
 void init_ROS(){
@@ -38,11 +40,11 @@ void init_ROS(){
     }
 
     Serial.begin(921600);
-    Serial.setRxBufferSize(1024);
+    Serial.setRxBufferSize(4096);
 
     set_microros_serial_transports(Serial);
     
-    delay(2000);
+    delay(1000);
 
     ros_allocator = rcl_get_default_allocator();
 
@@ -59,6 +61,13 @@ void init_ROS(){
         ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
         "ctrl_output"));
 
+    // create subscriber with best-effort Qos
+    RCCHECK(rclc_subscription_init_best_effort(
+        &state_cmd_subscriber,
+        &node,
+        ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, UInt8),
+        "rc_state_cmd"));
+
     // create IMU Publisher
     RCCHECK(rclc_publisher_init_best_effort(
       &imu_pub,
@@ -74,7 +83,7 @@ void init_ROS(){
       "imu/mag"));
 
     // create state Publisher
-    RCCHECK(rclc_publisher_init_best_effort(
+    RCCHECK(rclc_publisher_init_default(
       &state_pub,
       &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, UInt8),
@@ -82,15 +91,18 @@ void init_ROS(){
     ));
 
     // create executor
-    RCCHECK(rclc_executor_init(&executor, &support.context, 2, &ros_allocator));
-    RCCHECK(rclc_executor_add_subscription(&executor, &control_subscriber, &msg, &subscription_callback, ON_NEW_DATA));
-    //setup_watchdog_ros_timer();
+    RCCHECK(rclc_executor_init(&exec_state, &support.context, 2, &ros_allocator));
+    RCCHECK(rclc_executor_init(&exec_ctrl,  &support.context, 2, &ros_allocator));
+
+    // attach
+    RCCHECK(rclc_executor_add_subscription(&exec_ctrl, &control_subscriber, &ctrl_msg, &ctrl_sub_callback, ON_NEW_DATA));
+    RCCHECK(rclc_executor_add_subscription(&exec_state, &state_cmd_subscriber, &state_msg, &state_cmd_sub_callback, ON_NEW_DATA));
 }
 
 void setup_watchdog_ros_timer(){
   watchdog_ros_timer = xTimerCreate(
     "msg_watchdog",
-    pdMS_TO_TICKS(10), //check every 10ms
+    pdMS_TO_TICKS(30), //check every 30ms
     pdTRUE,
     NULL,
     watchdog_ros_callback
@@ -100,9 +112,23 @@ void setup_watchdog_ros_timer(){
 
 //Setup watchdog_ros timer callback
 void watchdog_ros_callback(TimerHandle_t xTimer){
+  static uint8_t miss_count = 0;
+  uint32_t tick_copy = 0;
+
+  portENTER_CRITICAL(&rosTickMux);
+  tick_copy = last_msg_tick;
+  portEXIT_CRITICAL(&rosTickMux);
+
+  //Bypass if we havent hit a message yet.
+  if(tick_copy == 0){return;}
+
   uint32_t now = xTaskGetTickCount();
-  if((now-last_msg_tick) > pdMS_TO_TICKS(TIMEOUT_ROS_MS)) {
-    //stateMachine->setFault(ROS_CONNECTION_LOSS);
+  if((now-tick_copy) > pdMS_TO_TICKS(TIMEOUT_ROS_MS)) {
+    if(++miss_count > 5) {
+      stateMachine->setFault(ROS_CTRL_WDOG);
+    }
+  } else {
+    miss_count = 0;
   }
 }
 
@@ -116,10 +142,24 @@ void error_loop(){
   }
 }
 
-void subscription_callback(const void * msgin)
+void ctrl_sub_callback(const void * msgin)
 {  
   const geometry_msgs__msg__Twist * msg = (const geometry_msgs__msg__Twist *)msgin;
+
+  static bool led_state = false;
+
+  digitalWrite(LED_BUILTIN, led_state);
+  led_state = !led_state;
+
+  portENTER_CRITICAL(&rosTickMux);
   last_msg_tick = xTaskGetTickCount();
+  portEXIT_CRITICAL(&rosTickMux);
+
+  /*
+  SerialDBug.print("Time since last msg: ");
+  SerialDBug.print(xTaskGetTickCount() - prnt_last_msg_time);
+  SerialDBug.println(" ms");
+  */
 
   // Lock the mutex before updating shared variable
   if(xSemaphoreTake(controlDataMutex, portMAX_DELAY) == pdTRUE)
@@ -134,19 +174,53 @@ void subscription_callback(const void * msgin)
     xSemaphoreGive(controlDataMutex);
   };
 
-  xQueueSend(controlQueue, &cmd, pdMS_TO_TICKS(5));  // Send to queue without waiting  
+  BaseType_t sent = xQueueSend(controlQueue, &cmd, pdMS_TO_TICKS(5));  // Send to queue without waiting  
+  if (sent!= pdTRUE) {
+    stateMachine->setFault(SaurconFaults::ROS_QUEUE_FULL);
+  }
+}
+
+// uRos state command subscriber callback
+void state_cmd_sub_callback(const void * msgin)
+{
+  static uint32_t last_processed_tick = 0;
+  uint32_t now = xTaskGetTickCount();
+
+  // Only process every 100 ms
+  if ((now - last_processed_tick) < pdMS_TO_TICKS(300)) {
+    return;  // too soon, skip this one
+  }
+
+  last_processed_tick = now;
+
+  const std_msgs__msg__UInt8 * msg = (const std_msgs__msg__UInt8 *)msgin;
+  SaurconState commandState = static_cast<SaurconState>(msg->data);
+  stateMachine->setCommandState(commandState);
 }
 
 // uRos Subscribe Task
-void ros_subscriber_task(void *pvParameters) 
+void ros_ctrl_sub_task(void *pvParameters) 
 {
   while(1) {
     // Spin the executor to process incoming messages with a timeout
-    rcl_ret_t ret = rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
+    rcl_ret_t ret = rclc_executor_spin_some(&exec_ctrl, RCL_MS_TO_NS(5));
 
-    if (ret != RCL_RET_OK) {stateMachine->setFault(ROS_CONNECTION_LOSS);}
+    if (ret != RCL_RET_OK) {stateMachine->setFault(ROS_COM_LOSS);}
 
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(2));
+  }
+}
+
+// uRos Subscribe Task
+void ros_state_sub_task(void *pvParameters) 
+{
+  while(1) {
+    // Spin the executor to process incoming messages with a timeout
+    rcl_ret_t ret = rclc_executor_spin_some(&exec_state, RCL_MS_TO_NS(5));
+
+    if (ret != RCL_RET_OK) {stateMachine->setFault(ROS_COM_LOSS);}
+
+    vTaskDelay(pdMS_TO_TICKS(20));
   }
 }
 
@@ -158,7 +232,7 @@ void ros_state_publisher_task(void *pvParameters)
 
     rcl_ret_t ok_pub = rcl_publish(&state_pub, &state_msg, NULL);
 
-    vTaskDelay(pdMS_TO_TICKS(20));
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
 // uRos Sensor Publish Task
@@ -226,7 +300,7 @@ void ros_sensor_publisher_task(void *pvParameters)
     }
     ***/
 
-    vTaskDelay(pdMS_TO_TICKS(10)); //Delay 10ms for 100hz 
+    vTaskDelay(pdMS_TO_TICKS(50)); //Delay 10ms for 100hz 
   }
 }
 

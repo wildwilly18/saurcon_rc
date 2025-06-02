@@ -34,14 +34,15 @@
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
 //Micro-Ros objects
-extern rcl_subscription_t subscriber;
 extern rcl_subscription_t control_subscriber;
+extern rcl_subscription_t state_cmd_subscriber;
 
 extern rcl_publisher_t imu_pub;
 extern rcl_publisher_t mag_pub;
 extern rcl_publisher_t state_pub;
 
-extern geometry_msgs__msg__Twist msg;
+extern std_msgs__msg__UInt8 state_msg;
+extern geometry_msgs__msg__Twist ctrl_msg;
 extern sensor_msgs__msg__Imu msg_imu;
 extern sensor_msgs__msg__MagneticField msg_mag;
 
@@ -56,8 +57,12 @@ void init_ROS();
 void setup_watchdog_ros_timer();
 void watchdog_ros_callback(TimerHandle_t xTimer);
 void error_loop();
-void subscription_callback(const void * msgin);
-void ros_subscriber_task(void *pvParameters);
+void ctrl_sub_callback(const void * msgin);
+void state_cmd_sub_callback(const void * msgin);
+
+// Task Functions
+void ros_ctrl_sub_task(void *pvParameters);
+void ros_state_sub_task(void *pvParameters);
 void ros_sensor_publisher_task(void *pvParameters);
 void ros_state_publisher_task(void *pvParameters);
 void fill_msg_header(std_msgs__msg__Header &header, const char *frame_id_str);

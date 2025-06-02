@@ -15,7 +15,7 @@
 #include "motor_control.h"
 #include "encoder.h"
 #include "state_machine.h"
-
+#include "shared_resources.h"
 
 void state_machine_task(void *param){
   stateMachine = new StateMachine(); 
@@ -23,7 +23,9 @@ void state_machine_task(void *param){
 }
 
 void setup() {
-  xTaskCreate(state_machine_task, "state_machine_task", 8192, NULL, 1, NULL);
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  xTaskCreatePinnedToCore(state_machine_task, "state_machine_task", 8192, NULL, 2, NULL, 1);
 }
 
 void loop() {

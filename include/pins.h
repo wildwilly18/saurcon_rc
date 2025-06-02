@@ -22,3 +22,6 @@
 
 #define SCL_PIN 22
 #define SDA_PIN 21
+
+#define RX_2 26
+#define TX_2 27

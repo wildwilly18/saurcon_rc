@@ -26,6 +26,43 @@ void DisplayManager::setState(DisplayState state) {
     currentDisplayState = state;
 }
 
+void DisplayManager::setFault(SaurconFaults fault) {
+    currentDisplayState = DisplayState::FAULT_DISPLAY;
+
+    currentFault = fault;
+    
+    //Fill fault String
+    switch (currentFault) {
+        case SaurconFaults::NONE:
+            strcpy(faultSTR, "NO FAULT");
+            break;
+        case SaurconFaults::GENERIC_FAULT:
+            strcpy(faultSTR, "GENERIC");
+            break;
+        case SaurconFaults::IMU_START_FAULT:
+            strcpy(faultSTR, "IMU FAULT");
+            break;
+        case SaurconFaults::ROS_CONNECTION_LOSS:
+            strcpy(faultSTR, "ROS CONN");
+            break;
+        case SaurconFaults::ROS_MOTOR_TIMEOUT:
+            strcpy(faultSTR, "ROS MOTOR");
+            break;
+        case SaurconFaults::ROS_COM_LOSS:
+            strcpy(faultSTR, "ROS COM");
+            break;
+        case SaurconFaults::ROS_QUEUE_FULL:
+            strcpy(faultSTR, "ROS QFULL");
+            break;
+        case SaurconFaults::ROS_CTRL_WDOG:
+            strcpy(faultSTR, "ROS CWDOG");
+            break;
+        default:
+            strcpy(faultSTR, "UNKNOWN");
+            break;
+    }
+}
+
 void DisplayManager::startTask() {
     xTaskCreate(DisplayManager::display_update_task, "display_update_task", 4096, this, 1, &display_update_task_handle);
 }
@@ -88,7 +125,6 @@ void DisplayManager::display_update_task(void *pvParameters) {
                     break;
 
                 case FAULT_DISPLAY:
-                    sprintf(display->faultSTR, "%d", ROS_CONNECTION_LOSS);
                     display->u8g2.drawStr(0, 10, "______SauRCon_______");
                     display->u8g2.drawStr(0, 25, "FAULT: ");
                     display->u8g2.drawStr(0, 40, "RESET: ");
@@ -102,6 +138,13 @@ void DisplayManager::display_update_task(void *pvParameters) {
                     display->u8g2.drawStr(0, 25, "STARTING UP SAURCON");
                     display->u8g2.drawStr(0, 40, "PLEASE BE PATIENT");
                     display->u8g2.drawStr(20, 55, "STATE: STARTUP");
+                    break;
+
+                case STANDBY_DISPLAY:
+                    display->u8g2.drawStr(0, 10, "______SauRCon_______");
+                    display->u8g2.drawStr(0, 25, "STARTING UP SAURCON");
+                    display->u8g2.drawStr(20, 40,   "IM LISTENING");
+                    display->u8g2.drawStr(20, 55, "STATE: STANDBY");
                     break;
 
                 case ROS_STARTUP_DISPLAY:
@@ -124,6 +167,6 @@ void DisplayManager::display_update_task(void *pvParameters) {
 
             xSemaphoreGive(i2cMutex);
         };
-        vTaskDelay(pdMS_TO_TICKS(200));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }

@@ -17,6 +17,7 @@ enum class SaurconState : uint8_t {
 enum DisplayState {
     OFF_DISPLAY,
     STARTUP_DISPLAY,
+    STANDBY_DISPLAY,
     ROS_STARTUP_DISPLAY,
     RUN_DISPLAY,
     ENCODER_DISPLAY,
@@ -39,5 +40,9 @@ enum SaurconFaults {
     NONE = 0,                  // No fault
     GENERIC_FAULT,            // General error
     IMU_START_FAULT,          // IMU Failed Setup
-    ROS_CONNECTION_LOSS       // Lost comms with ROS
+    ROS_CONNECTION_LOSS,      // Lost comms with ROS
+    ROS_MOTOR_TIMEOUT,        //
+    ROS_COM_LOSS,
+    ROS_QUEUE_FULL,
+    ROS_CTRL_WDOG
 };

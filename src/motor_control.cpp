@@ -27,7 +27,7 @@ void task_motion_control(void *pv){
             localState = stateMachine->getState();
         }
         
-        if(xQueueReceive(controlQueue, &receivedCommand, pdMS_TO_TICKS(3000))){
+        if(xQueueReceive(controlQueue, &receivedCommand, pdMS_TO_TICKS(5))){
             servo_angle_mapped = map_steering(receivedCommand.steer);
             throttle_mapped    = map_throttle(receivedCommand.throttle);
 
@@ -47,15 +47,17 @@ void task_motion_control(void *pv){
                 break;
             }
 
-        } else {
-            if(stateMachine)
+        }
+        /* else {
+            if(stateMachine && (localState == SaurconState::RUN_CONTROL || localState == SaurconState::RUN_AUTONOMOUS))
             {
-                stateMachine->setFault(ROS_CONNECTION_LOSS);
+                stateMachine->setFault(ROS_COM_LOSS);
                 set_servo(servo_angle);
             }
         }
+            */
         
-        vTaskDelay(1);
+        vTaskDelay(pdMS_TO_TICKS(2));
     }
 }
 

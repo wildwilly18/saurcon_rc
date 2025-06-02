@@ -22,11 +22,19 @@ public:
     void run();
     void setState(SaurconState nextState);
     void setFault(SaurconFaults fault);
+    void setCommandState(SaurconState commandedState);
+
     SaurconState getState();
+    SaurconFaults getFault();
+    SaurconState getCommandedState();
 
 private:
     SaurconState currentState;
     SaurconState previousState;
+    SaurconState commandedState;
+
+    SaurconFaults currentFault;
+
     SemaphoreHandle_t stateMutex;
 
     DisplayManager display;
@@ -35,6 +43,9 @@ private:
     void onEnter(SaurconState state);
     void onExit(SaurconState state);
     void handle(SaurconState state);
+
+    bool checkStateCommandChange();
+    bool isExternalCommandAllowed(SaurconState current, SaurconState cmd);
 
     void onEnter_STARTUP();
     void handle_STARTUP();

@@ -18,6 +18,7 @@ class DisplayManager {
     
         void init();
         void setState(DisplayState state);
+        void setFault(SaurconFaults fault);
         void startTask();
 
         static void display_update_task(void *param);
@@ -25,6 +26,7 @@ class DisplayManager {
     private:
         DisplayState currentDisplayState;
         TaskHandle_t display_update_task_handle;
+        SaurconFaults currentFault = SaurconFaults::NONE;
     
         char formattedSetVEL[10];
         char formattedSetSTEER[10];
