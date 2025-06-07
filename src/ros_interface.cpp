@@ -84,13 +84,13 @@ void init_ROS(){
     // create executor
     RCCHECK(rclc_executor_init(&executor, &support.context, 2, &ros_allocator));
     RCCHECK(rclc_executor_add_subscription(&executor, &control_subscriber, &msg, &subscription_callback, ON_NEW_DATA));
-    //setup_watchdog_ros_timer();
+
 }
 
 void setup_watchdog_ros_timer(){
   watchdog_ros_timer = xTimerCreate(
     "msg_watchdog",
-    pdMS_TO_TICKS(10), //check every 10ms
+    pdMS_TO_TICKS(30), //check every 30ms
     pdTRUE,
     NULL,
     watchdog_ros_callback
@@ -101,15 +101,18 @@ void setup_watchdog_ros_timer(){
 //Setup watchdog_ros timer callback
 void watchdog_ros_callback(TimerHandle_t xTimer){
   uint32_t now = xTaskGetTickCount();
+
+  if(last_msg_tick ==0){ return;}
+  
   if((now-last_msg_tick) > pdMS_TO_TICKS(TIMEOUT_ROS_MS)) {
-    //stateMachine->setFault(ROS_CONNECTION_LOSS);
+    stateMachine->setFault(ROS_WATCHDOG_TIMEOUT);
   }
 }
 
 // Define the Micro-ROS objects declared in the header file
 void error_loop(){
   while(1){
-    stateMachine->setFault(ROS_CONNECTION_LOSS);
+    stateMachine->setFault(ROS_ERROR_LOOP);
     vTaskDelay(pdMS_TO_TICKS(1000));
     ESP.restart();
     
@@ -120,6 +123,10 @@ void subscription_callback(const void * msgin)
 {  
   const geometry_msgs__msg__Twist * msg = (const geometry_msgs__msg__Twist *)msgin;
   last_msg_tick = xTaskGetTickCount();
+
+  static bool led_state = false;
+  led_state = !led_state;
+  digitalWrite(LED_BUILTIN, led_state ? HIGH : LOW);
 
   // Lock the mutex before updating shared variable
   if(xSemaphoreTake(controlDataMutex, portMAX_DELAY) == pdTRUE)
@@ -138,7 +145,7 @@ void subscription_callback(const void * msgin)
 }
 
 // uRos Subscribe Task
-void ros_subscriber_task(void *pvParameters) 
+void ros_control_subscriber_task(void *pvParameters) 
 {
   while(1) {
     // Spin the executor to process incoming messages with a timeout
@@ -146,7 +153,7 @@ void ros_subscriber_task(void *pvParameters)
 
     if (ret != RCL_RET_OK) {stateMachine->setFault(ROS_CONNECTION_LOSS);}
 
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 

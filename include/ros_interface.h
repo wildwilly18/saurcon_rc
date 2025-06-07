@@ -57,6 +57,7 @@ void setup_watchdog_ros_timer();
 void watchdog_ros_callback(TimerHandle_t xTimer);
 void error_loop();
 void subscription_callback(const void * msgin);
+void ros_control_subscriber_task(void *pvParameters);
 void ros_subscriber_task(void *pvParameters);
 void ros_sensor_publisher_task(void *pvParameters);
 void ros_state_publisher_task(void *pvParameters);

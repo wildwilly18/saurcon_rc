@@ -39,5 +39,8 @@ enum SaurconFaults {
     NONE = 0,                  // No fault
     GENERIC_FAULT,            // General error
     IMU_START_FAULT,          // IMU Failed Setup
-    ROS_CONNECTION_LOSS       // Lost comms with ROS
+    ROS_CONNECTION_LOSS,      // Lost comms with ROS
+    ROS_WATCHDOG_TIMEOUT,  
+    ROS_QUEUE_OVERFLOW,
+    ROS_ERROR_LOOP
 };

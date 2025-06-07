@@ -114,16 +114,36 @@ void StateMachine::onEnter_STARTUP_ROS() {
     led.setLEDState(LEDState::ON, LEDState::OFF, LEDState::BLINK_FAST);
     init_ROS();
     if (!ros_subscriber_task_handle) {
-        xTaskCreate(ros_subscriber_task, "ros_subscriber_task", 4096, NULL, 2, &ros_subscriber_task_handle);
+        xTaskCreate(
+            ros_control_subscriber_task, 
+            "ros_control_subscriber_task", 
+            4096, 
+            NULL, 
+            3, 
+            &ros_subscriber_task_handle);
     }
 
     if(!ros_sensor_publisher_task_handle){
-        xTaskCreate(ros_sensor_publisher_task, "ros_sensor_publisher_task", 4096, NULL, 2, &ros_sensor_publisher_task_handle);
+        xTaskCreate(
+            ros_sensor_publisher_task, 
+            "ros_sensor_publisher_task", 
+            4096, 
+            NULL, 
+            2, 
+            &ros_sensor_publisher_task_handle);
     }
 
     if(!ros_state_publisher_task_handle){
-        xTaskCreate(ros_state_publisher_task, "ros_state_publisher_task", 2048, NULL, 2, &ros_state_publisher_task_handle);
+        xTaskCreate(
+            ros_state_publisher_task, 
+            "ros_state_publisher_task", 
+            2048, 
+            NULL, 
+            2, 
+            &ros_state_publisher_task_handle);
     }
+
+    setup_watchdog_ros_timer();
 }
 
 void StateMachine::handle_STARTUP_ROS() {
@@ -141,7 +161,14 @@ void StateMachine::handle_SETUP() {
     init_pwm();
     init_servo();
     init_throttle();
-    xTaskCreate(task_motion_control, "task_motion_control", 2048, NULL, 1, NULL);
+    xTaskCreate(
+        task_motion_control, 
+        "task_motion_control", 
+        2048, 
+        NULL, 
+        1, 
+        NULL);
+
     setState(SaurconState::RUN_CONTROL);
 }
 
@@ -155,7 +182,7 @@ void StateMachine::handle_STANDBY(){
 
 void StateMachine::onEnter_RUN_CONTROL() {
     led.setLEDState(LEDState::OFF, LEDState::ON, LEDState::BLINK_SLOW);
-    display.setState(ENCODER_DISPLAY);
+    display.setState(RUN_DISPLAY);
 }
 
 void StateMachine::handle_RUN_CONTROL() {
