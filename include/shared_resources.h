@@ -18,7 +18,8 @@ extern float steerCommand;
 
 extern SemaphoreHandle_t controlDataMutex;
 extern SemaphoreHandle_t i2cMutex;
-extern TaskHandle_t ros_subscriber_task_handle;
+extern TaskHandle_t ros_control_subscriber_task_handle;
+extern TaskHandle_t ros_state_subscriber_task_handle;
 extern TaskHandle_t ros_sensor_publisher_task_handle;
 extern TaskHandle_t ros_state_publisher_task_handle;
 

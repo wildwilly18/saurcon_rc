@@ -5,8 +5,8 @@
 TimerHandle_t watchdog_ros_timer;
 
 //Micro-Ros objects
-rcl_subscription_t subscriber;
 rcl_subscription_t control_subscriber;
+rcl_subscription_t rc_state_subscriber;
 rcl_publisher_t imu_pub;
 rcl_publisher_t mag_pub;
 rcl_publisher_t state_pub;
@@ -16,7 +16,8 @@ std_msgs__msg__UInt8 state_msg;
 geometry_msgs__msg__Twist msg;
 sensor_msgs__msg__Imu msg_imu;
 sensor_msgs__msg__MagneticField msg_mag;
-rclc_executor_t executor;
+rclc_executor_t ctrl_executor;
+rclc_executor_t state_executor;
 rclc_support_t support;
 rcl_allocator_t ros_allocator;
 rcl_node_t node;
@@ -59,6 +60,13 @@ void init_ROS(){
         ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
         "ctrl_output"));
 
+    //create a state request subscriber with best-effort Qos
+    RCCHECK(rclc_subscription_init_best_effort(
+      &rc_state_subscriber,
+      &node,
+      ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, UInt8),
+      "rc_state_cmd"));
+
     // create IMU Publisher
     RCCHECK(rclc_publisher_init_best_effort(
       &imu_pub,
@@ -81,9 +89,13 @@ void init_ROS(){
       "saurcon/state"
     ));
 
-    // create executor
-    RCCHECK(rclc_executor_init(&executor, &support.context, 2, &ros_allocator));
-    RCCHECK(rclc_executor_add_subscription(&executor, &control_subscriber, &msg, &subscription_callback, ON_NEW_DATA));
+    // create ctrl_executor
+    RCCHECK(rclc_executor_init(&ctrl_executor, &support.context, 2, &ros_allocator));
+    RCCHECK(rclc_executor_add_subscription(&ctrl_executor, &control_subscriber, &msg, &ctrl_subscription_callback, ON_NEW_DATA));
+
+    // create ctrl_executor
+    RCCHECK(rclc_executor_init(&state_executor, &support.context, 2, &ros_allocator));
+    RCCHECK(rclc_executor_add_subscription(&state_executor, &rc_state_subscriber, &msg, &state_subscription_callback, ON_NEW_DATA));
 
 }
 
@@ -119,7 +131,7 @@ void error_loop(){
   }
 }
 
-void subscription_callback(const void * msgin)
+void ctrl_subscription_callback(const void * msgin)
 {  
   const geometry_msgs__msg__Twist * msg = (const geometry_msgs__msg__Twist *)msgin;
   last_msg_tick = xTaskGetTickCount();
@@ -144,16 +156,34 @@ void subscription_callback(const void * msgin)
   xQueueSend(controlQueue, &cmd, pdMS_TO_TICKS(5));  // Send to queue without waiting  
 }
 
+void state_subscription_callback(const void * msgin)
+{
+  //Do nothing yet.
+}
+
 // uRos Subscribe Task
 void ros_control_subscriber_task(void *pvParameters) 
 {
   while(1) {
     // Spin the executor to process incoming messages with a timeout
-    rcl_ret_t ret = rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
+    rcl_ret_t ret = rclc_executor_spin_some(&ctrl_executor, RCL_MS_TO_NS(10));
 
     if (ret != RCL_RET_OK) {stateMachine->setFault(ROS_CONNECTION_LOSS);}
 
     vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
+
+// uRos Subscribe Task
+void ros_state_subscriber_task(void *pvParameters) 
+{
+  while(1) {
+    // Spin the executor to process incoming messages with a timeout
+    rcl_ret_t ret = rclc_executor_spin_some(&state_executor, RCL_MS_TO_NS(10));
+
+    if (ret != RCL_RET_OK) {stateMachine->setFault(ROS_CONNECTION_LOSS);}
+
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
 

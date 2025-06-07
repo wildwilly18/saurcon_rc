@@ -113,14 +113,26 @@ void StateMachine::handle_STARTUP() {
 void StateMachine::onEnter_STARTUP_ROS() {
     led.setLEDState(LEDState::ON, LEDState::OFF, LEDState::BLINK_FAST);
     init_ROS();
-    if (!ros_subscriber_task_handle) {
-        xTaskCreate(
+    if (!ros_control_subscriber_task_handle) {
+        xTaskCreatePinnedToCore(
             ros_control_subscriber_task, 
             "ros_control_subscriber_task", 
             4096, 
             NULL, 
             3, 
-            &ros_subscriber_task_handle);
+            &ros_control_subscriber_task_handle,
+            1);
+    }
+
+    if (!ros_state_subscriber_task_handle) {
+        xTaskCreatePinnedToCore(
+            ros_state_subscriber_task, 
+            "ros_state_subscriber_task", 
+            4096, 
+            NULL, 
+            2, 
+            &ros_state_subscriber_task_handle,
+            0);
     }
 
     if(!ros_sensor_publisher_task_handle){
@@ -134,13 +146,14 @@ void StateMachine::onEnter_STARTUP_ROS() {
     }
 
     if(!ros_state_publisher_task_handle){
-        xTaskCreate(
+        xTaskCreatePinnedToCore(
             ros_state_publisher_task, 
             "ros_state_publisher_task", 
             2048, 
             NULL, 
             2, 
-            &ros_state_publisher_task_handle);
+            &ros_state_publisher_task_handle,
+            0);
     }
 
     setup_watchdog_ros_timer();
