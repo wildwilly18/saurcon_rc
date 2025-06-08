@@ -104,6 +104,20 @@ void DisplayManager::display_update_task(void *pvParameters) {
                     display->u8g2.drawStr(20, 55, "STATE: STARTUP");
                     break;
 
+                case SETUP_DISPLAY:
+                    display->u8g2.drawStr(0, 10, "______SauRCon_______");
+                    display->u8g2.drawStr(0, 25, "SETTING UP SAURCON");
+                    display->u8g2.drawStr(0, 40, "PLEASE BE PATIENT");
+                    display->u8g2.drawStr(20, 55, "STATE: SETUP");
+                    break;
+
+                case STANDBY_DISPLAY:
+                    display->u8g2.drawStr(0, 10, "______SauRCon_______");
+                    display->u8g2.drawStr(0, 25, "IN STANDBY");
+                    display->u8g2.drawStr(0, 40, "WAITING PATIENTLY");
+                    display->u8g2.drawStr(20, 55, "STATE: STANDBY");
+                    break;
+
                 case ROS_STARTUP_DISPLAY:
                     display->u8g2.drawStr(0, 10, "______SauRCon_______");
                     display->u8g2.drawStr(0, 25, "SETTING UP ROS");

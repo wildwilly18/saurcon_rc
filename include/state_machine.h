@@ -20,13 +20,15 @@ class StateMachine {
 public:
     StateMachine();
     void run();
-    void setState(SaurconState nextState);
+    void setRequestedState(SaurconState reqState);
     void setFault(SaurconFaults fault);
     SaurconState getState();
 
 private:
     SaurconState currentState;
     SaurconState previousState;
+    SaurconState requestedState;
+
     SemaphoreHandle_t stateMutex;
 
     DisplayManager display;
@@ -35,6 +37,8 @@ private:
     void onEnter(SaurconState state);
     void onExit(SaurconState state);
     void handle(SaurconState state);
+
+    bool isValidTransition(SaurconState from, SaurconState to);
 
     void onEnter_STARTUP();
     void handle_STARTUP();
@@ -61,4 +65,5 @@ private:
     
     void onEnter_FAULT_ROS();
     void handle_FAULT_ROS();
+
 };

@@ -158,7 +158,11 @@ void ctrl_subscription_callback(const void * msgin)
 
 void state_subscription_callback(const void * msgin)
 {
-  //Do nothing yet.
+  const std_msgs__msg__UInt8 * msg = (const std_msgs__msg__UInt8 *)msgin;
+
+  SaurconState stateRequest = static_cast<SaurconState>(msg->data);
+
+  stateMachine->setRequestedState(stateRequest);
 }
 
 // uRos Subscribe Task
@@ -255,13 +259,6 @@ void ros_sensor_publisher_task(void *pvParameters)
 
     rcl_ret_t rc_imu = rcl_publish(&imu_pub, &msg_imu, NULL);
     rcl_ret_t rc_mag = rcl_publish(&mag_pub, &msg_mag, NULL);
-
-    /*** 
-    if(rc_imu != RCL_RET_OK || rc_mag != RCL_RET_OK) {
-      stateMachine->setFault(SaurconFaults::ROS_CONNECTION_LOSS);
-      stateMachine->setState(SaurconState::FAULT_ROS_SCON);
-    }
-    ***/
 
     vTaskDelay(pdMS_TO_TICKS(10)); //Delay 10ms for 100hz 
   }

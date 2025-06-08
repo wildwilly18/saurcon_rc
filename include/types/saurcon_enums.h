@@ -17,6 +17,8 @@ enum class SaurconState : uint8_t {
 enum DisplayState {
     OFF_DISPLAY,
     STARTUP_DISPLAY,
+    STANDBY_DISPLAY,
+    SETUP_DISPLAY,
     ROS_STARTUP_DISPLAY,
     RUN_DISPLAY,
     ENCODER_DISPLAY,

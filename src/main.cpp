@@ -23,7 +23,7 @@ void state_machine_task(void *param){
 }
 
 void setup() {
-  xTaskCreate(state_machine_task, "state_machine_task", 8192, NULL, 1, NULL);
+  xTaskCreate(state_machine_task, "state_machine_task", 8192, NULL, 2, NULL);
 }
 
 void loop() {

@@ -1,12 +1,16 @@
 #include "state_machine.h"
 #include "shared_resources.h"
 #include "display.h"
+#include <map>
+#include <set>
 
 // Initialize the State Machine
 StateMachine::StateMachine() {
     stateMutex = xSemaphoreCreateMutex();
+
     currentState = SaurconState::STARTUP;
     previousState = SaurconState::NO_STATE;
+    requestedState = SaurconState::NO_STATE;
 
     Wire.begin(SDA_PIN, SCL_PIN);
 
@@ -23,11 +27,9 @@ StateMachine::StateMachine() {
     led.init();
 }
 
-void StateMachine::setState(SaurconState nextState) {
-    if (xSemaphoreTake(stateMutex, 10) == pdTRUE) {
-        if (nextState != currentState) {
-            currentState = nextState;
-        }
+void StateMachine::setRequestedState(SaurconState reqState) {
+    if (xSemaphoreTake(stateMutex, portMAX_DELAY)) {
+        requestedState = reqState;
         xSemaphoreGive(stateMutex);
     }
 }
@@ -50,15 +52,40 @@ SaurconState StateMachine::getState() {
 
 void StateMachine::run() {
     SaurconState localState = getState();
+    SaurconState localRequestedState = SaurconState::NO_STATE;
 
-    if (localState != previousState) {
-        onExit(previousState);
-        onEnter(localState);
-        previousState = localState;
+    bool gotRequested = false;
+
+    //Grab our safe copy of requested state
+    if(xSemaphoreTake(stateMutex, pdMS_TO_TICKS(10))) {
+        localRequestedState = requestedState;
+        xSemaphoreGive(stateMutex);
+        gotRequested = true;
+    }
+
+    // Handle state transition if need be
+    if(gotRequested &&
+    localRequestedState != SaurconState::NO_STATE &&
+    localRequestedState != localState)
+    {
+        if(StateMachine::isValidTransition(localState, localRequestedState)) {
+
+            onExit(localState);
+            
+            if (xSemaphoreTake(stateMutex, pdMS_TO_TICKS(10))) {
+                currentState = localRequestedState;
+                xSemaphoreGive(stateMutex);
+            }
+
+            previousState = localState;
+            localState = localRequestedState;
+            onEnter(localState);
+        }
     }
 
     handle(localState);
-    vTaskDelay(pdMS_TO_TICKS(100));
+
+    vTaskDelay(pdMS_TO_TICKS(50));
 }
 
 // --- State Routing ---
@@ -98,20 +125,40 @@ void StateMachine::onExit(SaurconState state) {
     }
 }
 
+bool StateMachine::isValidTransition(SaurconState from, SaurconState to) {
+    static const std::map<SaurconState, std::set<SaurconState>> validTransitions = {
+        { SaurconState::STARTUP, { SaurconState::STARTUP_ROS } },
+        { SaurconState::STARTUP_ROS, { SaurconState::SETUP } },
+        { SaurconState::SETUP, { SaurconState::STANDBY, SaurconState::FAULT, SaurconState::FAULT_ROS} },
+        { SaurconState::RUN_CONTROL, { SaurconState::RUN_AUTONOMOUS, SaurconState::FAULT, SaurconState::FAULT_ROS, SaurconState::STANDBY } },
+        { SaurconState::RUN_AUTONOMOUS, { SaurconState::RUN_CONTROL, SaurconState::FAULT, SaurconState::FAULT_ROS, SaurconState::STANDBY } },
+        { SaurconState::STANDBY, { SaurconState::RUN_CONTROL, SaurconState::RUN_AUTONOMOUS, SaurconState::FAULT, SaurconState::FAULT_ROS } },
+        { SaurconState::FAULT, { SaurconState::STARTUP } },
+        { SaurconState::FAULT_ROS, { SaurconState::STARTUP } }
+    };
+
+    auto it = validTransitions.find(from);
+    if (it != validTransitions.end()) {
+        return it->second.count(to) > 0;
+    }
+    return false;
+}
+
 // --- Individual State Methods ---
 
 void StateMachine::onEnter_STARTUP() {
-    led.setLEDState(LEDState::OFF, LEDState::OFF, LEDState::OFF);
+    led.setLEDState(LEDState::ON, LEDState::ON, LEDState::ON);
     vTaskDelay(pdMS_TO_TICKS(50));
 }
 
 void StateMachine::handle_STARTUP() {
     vTaskDelay(pdMS_TO_TICKS(50));
-    setState(SaurconState::STARTUP_ROS);
+    setRequestedState(SaurconState::STARTUP_ROS);
 }
 
 void StateMachine::onEnter_STARTUP_ROS() {
     led.setLEDState(LEDState::ON, LEDState::OFF, LEDState::BLINK_FAST);
+    display.setState(ROS_STARTUP_DISPLAY);
     init_ROS();
     if (!ros_control_subscriber_task_handle) {
         xTaskCreatePinnedToCore(
@@ -160,20 +207,20 @@ void StateMachine::onEnter_STARTUP_ROS() {
 }
 
 void StateMachine::handle_STARTUP_ROS() {
-    setState(SaurconState::SETUP);
+    setRequestedState(SaurconState::SETUP);
 }
 
 void StateMachine::onEnter_SETUP() {
-    //display.setState(STARTUP_DISPLAY);
-}
+    led.setLEDState(LEDState::BLINK_SLOW, LEDState::OFF, LEDState::OFF);
+    display.setState(SETUP_DISPLAY);
+    setRequestedState(SaurconState::STANDBY);
 
-void StateMachine::handle_SETUP() {
     encoder = new Encoder(A_PIN, B_PIN, C_PIN);
     encoder->begin();
 
     init_pwm();
     init_servo();
-    init_throttle();
+    //init_throttle();
     xTaskCreate(
         task_motion_control, 
         "task_motion_control", 
@@ -182,10 +229,15 @@ void StateMachine::handle_SETUP() {
         1, 
         NULL);
 
-    setState(SaurconState::RUN_CONTROL);
+}
+
+void StateMachine::handle_SETUP() {
+    setRequestedState(SaurconState::STANDBY);
 }
 
 void StateMachine::onEnter_STANDBY(){
+    led.setLEDState(LEDState::OFF, LEDState::OFF, LEDState::ON);
+    display.setState(STANDBY_DISPLAY);
     //Placeholder
 }
 
@@ -194,7 +246,7 @@ void StateMachine::handle_STANDBY(){
 }
 
 void StateMachine::onEnter_RUN_CONTROL() {
-    led.setLEDState(LEDState::OFF, LEDState::ON, LEDState::BLINK_SLOW);
+    led.setLEDState(LEDState::OFF, LEDState::ON, LEDState::OFF);
     display.setState(RUN_DISPLAY);
 }
 
