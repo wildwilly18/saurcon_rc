@@ -147,7 +147,7 @@ bool StateMachine::isValidTransition(SaurconState from, SaurconState to) {
 // --- Individual State Methods ---
 
 void StateMachine::onEnter_STARTUP() {
-    led.setLEDState(LEDState::ON, LEDState::ON, LEDState::ON);
+    led.setLEDState(LEDState::BLINK_FAST, LEDState::OFF, LEDState::OFF);
     vTaskDelay(pdMS_TO_TICKS(50));
 }
 
@@ -211,7 +211,7 @@ void StateMachine::handle_STARTUP_ROS() {
 }
 
 void StateMachine::onEnter_SETUP() {
-    led.setLEDState(LEDState::BLINK_SLOW, LEDState::OFF, LEDState::OFF);
+    led.setLEDState(LEDState::ON, LEDState::BLINK_FAST, LEDState::ON);
     display.setState(SETUP_DISPLAY);
     setRequestedState(SaurconState::STANDBY);
 
@@ -259,7 +259,7 @@ void StateMachine::onExit_RUN_CONTROL() {
 }
 
 void StateMachine::onEnter_RUN_AUTONOMOUS() {
-    led.setLEDState(LEDState::OFF, LEDState::ON, LEDState::BLINK_SLOW);
+    led.setLEDState(LEDState::OFF, LEDState::ON, LEDState::ON);
     display.setState(ENCODER_DISPLAY);
 }
 
