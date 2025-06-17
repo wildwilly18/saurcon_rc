@@ -1,44 +1,55 @@
 #include "imu.h"
 #include "shared_resources.h"
 
-IMU::IMU(uint8_t i2c_addr) : address(i2c_addr) {
+IMU::IMU() : mpu(Wire) {
     imuDataMutex = xSemaphoreCreateMutex();
 }
 
 // Initializes the IMU. Returns true if initialization is successful and the IMU is ready to use, 
 // otherwise returns false if initialization fails.
 bool IMU::begin() {
-    bool status = mpu.setup(address);
+    mpu = MPU6050(Wire);
+    bool imuOk;
+    byte status = mpu.begin();
 
-    if(status){
+    if(status) {
+        imuOk = true;
+
+        //Initialize MPU 6050
+        mpu.calcGyroOffsets();
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        
+        //Initialize Mag
+        mag.init();
+
         xTaskCreate(imu_update_task, "imu_update_task", 2048, this, 1, &imuTaskHandle);
+    } else {
+        imuOk = false;
     }
 
-    return status;
+    return imuOk;
 }
 
 void IMU::update() {
-    //if(!mpu.update()) return;
-    bool ok = mpu.update();
+    mpu.update();
 
-    if(ok){
-        if(xSemaphoreTake(imuDataMutex, pdMS_TO_TICKS(5))== pdTRUE) {
-            imuData.ax = mpu.getAccX();
-            imuData.ay = mpu.getAccY();
-            imuData.az = mpu.getAccZ();
+    if(xSemaphoreTake(imuDataMutex, pdMS_TO_TICKS(5))== pdTRUE) {
+        imuData.ax = mpu.getAccX();
+        imuData.ay = mpu.getAccY();
+        imuData.az = mpu.getAccX();
 
-            imuData.gx = mpu.getGyroX();
-            imuData.gy = mpu.getGyroY();
-            imuData.gz = mpu.getGyroZ();
+        imuData.gx = mpu.getGyroX();
+        imuData.gy = mpu.getGyroY();
+        imuData.gz = mpu.getGyroZ();
+        
+        mag.read();
+        imuData.mx = mag.getX();
+        imuData.my = mag.getY();
+        imuData.mz = mag.getZ();
 
-            imuData.mx = mpu.getMagX();
-            imuData.my = mpu.getMagY();
-            imuData.mz = mpu.getMagZ();
-
-            xSemaphoreGive(imuDataMutex);
-        }
-    }   
-}
+        xSemaphoreGive(imuDataMutex);
+    }
+}   
 
 void IMU::imu_update_task(void *param) {
     //task to update the imu values
@@ -76,16 +87,6 @@ void IMU::getMag(float& mx, float& my, float& mz) {
         mx = imuData.mx;
         my = imuData.my;
         mz = imuData.mz;
-        xSemaphoreGive(imuDataMutex);
-    }
-}
-
-void IMU::getQuaternion(float& qx, float& qy, float& qz, float& qw) {
-    if (xSemaphoreTake(imuDataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-        qx = mpu.getQuaternionX();
-        qy = mpu.getQuaternionY();
-        qz = mpu.getQuaternionZ();
-        qw = mpu.getQuaternionW();
         xSemaphoreGive(imuDataMutex);
     }
 }

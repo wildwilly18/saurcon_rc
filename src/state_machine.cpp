@@ -21,7 +21,7 @@ StateMachine::StateMachine() {
     display.init();
     display.startTask();
 
-    imu = new IMU(0x68);
+    imu = new IMU();
     imu->begin();
 
     led.init();
@@ -36,7 +36,7 @@ void StateMachine::setRequestedState(SaurconState reqState) {
 
 void StateMachine::setFault(SaurconFaults fault) {
     if (xSemaphoreTake(stateMutex, 10) == pdTRUE) {
-        currentState = (fault == ROS_CONNECTION_LOSS) ? SaurconState::FAULT_ROS : SaurconState::FAULT;
+        requestedState = SaurconState::FAULT;
         xSemaphoreGive(stateMutex);
     }
 }
@@ -220,7 +220,7 @@ void StateMachine::onEnter_SETUP() {
 
     init_pwm();
     init_servo();
-    //init_throttle();
+    init_throttle();
     xTaskCreate(
         task_motion_control, 
         "task_motion_control", 

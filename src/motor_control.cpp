@@ -27,7 +27,7 @@ void task_motion_control(void *pv){
             localState = stateMachine->getState();
         }
         
-        if(xQueueReceive(controlQueue, &receivedCommand, pdMS_TO_TICKS(3000))){
+        if(xQueueReceive(controlQueue, &receivedCommand, pdMS_TO_TICKS(120))){
             servo_angle_mapped = map_steering(receivedCommand.steer);
             throttle_mapped    = map_throttle(receivedCommand.throttle);
 
@@ -50,12 +50,14 @@ void task_motion_control(void *pv){
         } else {
             if(stateMachine)
             {
+                //If fail Stop Motors
                 stateMachine->setFault(ROS_CONNECTION_LOSS);
                 set_servo(servo_angle);
+                set_throttle(throttle);
             }
         }
         
-        vTaskDelay(1);
+        vTaskDelay(5);
     }
 }
 

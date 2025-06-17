@@ -216,7 +216,6 @@ void ros_sensor_publisher_task(void *pvParameters)
     imu->getAccel(ax, ay, az);
     imu->getGyro(gx, gy, gz);
     imu->getMag(mx, my, mz);
-    imu->getQuaternion(qx, qy, qz, qw);
 
     //Fill in the imu message
     fill_msg_header(msg_imu.header, "imu_link");
