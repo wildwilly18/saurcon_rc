@@ -36,7 +36,7 @@ void IMU::update() {
     if(xSemaphoreTake(imuDataMutex, pdMS_TO_TICKS(5))== pdTRUE) {
         imuData.ax = mpu.getAccX();
         imuData.ay = mpu.getAccY();
-        imuData.az = mpu.getAccX();
+        imuData.az = mpu.getAccZ();
 
         imuData.gx = mpu.getGyroX();
         imuData.gy = mpu.getGyroY();
@@ -66,27 +66,27 @@ void IMU::imu_update_task(void *param) {
 
 void IMU::getAccel(float& ax, float& ay, float& az) {
     if (xSemaphoreTake(imuDataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-        ax = imuData.ax;
-        ay = imuData.ay;
-        az = imuData.az;
+        ax =  imuData.ay;
+        ay = -imuData.ax;
+        az =  imuData.az;
         xSemaphoreGive(imuDataMutex);
     }
 }
 
 void IMU::getGyro(float& gx, float& gy, float& gz) {
     if (xSemaphoreTake(imuDataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-        gx = imuData.gx;
-        gy = imuData.gy;
-        gz = imuData.gz;
+        gx =  imuData.gy;
+        gy = -imuData.gx;
+        gz =  imuData.gz;
         xSemaphoreGive(imuDataMutex);
     }
 }
 
 void IMU::getMag(float& mx, float& my, float& mz) {
     if (xSemaphoreTake(imuDataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-        mx = imuData.mx;
-        my = imuData.my;
-        mz = imuData.mz;
+        mx = -imuData.mx;
+        my = -imuData.my;
+        mz =  imuData.mz;
         xSemaphoreGive(imuDataMutex);
     }
 }
