@@ -218,7 +218,7 @@ void ros_sensor_publisher_task(void *pvParameters)
     imu->getMag(mx, my, mz);
 
     //Fill in the imu message
-    fill_msg_header(msg_imu.header, "imu_link");
+    fill_msg_header(msg_imu.header, "base_link");
     msg_imu.linear_acceleration.x = ax * 9.80665;
     msg_imu.linear_acceleration.y = ay * 9.80665;
     msg_imu.linear_acceleration.z = az * 9.80665;
@@ -245,7 +245,7 @@ void ros_sensor_publisher_task(void *pvParameters)
     }
 
     //Fill in the Mag message
-    fill_msg_header(msg_mag.header, "imu_link");
+    fill_msg_header(msg_mag.header, "base_link");
 
     msg_mag.magnetic_field.x = mx;
     msg_mag.magnetic_field.y = my;
@@ -259,7 +259,7 @@ void ros_sensor_publisher_task(void *pvParameters)
     rcl_ret_t rc_imu = rcl_publish(&imu_pub, &msg_imu, NULL);
     rcl_ret_t rc_mag = rcl_publish(&mag_pub, &msg_mag, NULL);
 
-    vTaskDelay(pdMS_TO_TICKS(10)); //Delay 10ms for 100hz 
+    vTaskDelay(pdMS_TO_TICKS(20)); //Delay 10ms for 100hz 
   }
 }
 
