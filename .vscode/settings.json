@@ -60,5 +60,18 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "typeinfo": "cpp"
-    }
+    },
+    "ROS2.distro": "jazzy",
+    "python.autoComplete.extraPaths": [
+        "/home/wilson/saurcon_ws/install/saurcon_perception/lib/python3.12/site-packages",
+        "/home/wilson/saurcon_ws/install/micro_ros_msgs/lib/python3.12/site-packages",
+        "/home/wilson/uros_ws/install/micro_ros_msgs/lib/python3.12/site-packages",
+        "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/wilson/saurcon_ws/install/saurcon_perception/lib/python3.12/site-packages",
+        "/home/wilson/saurcon_ws/install/micro_ros_msgs/lib/python3.12/site-packages",
+        "/home/wilson/uros_ws/install/micro_ros_msgs/lib/python3.12/site-packages",
+        "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ]
 }

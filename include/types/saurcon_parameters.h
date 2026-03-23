@@ -19,5 +19,9 @@
 #define GEAR_RATIO 3.14f
 #define TICKS_PER_WHEEL_REV (ENCODER_TICKS_PER_REV * GEAR_RATIO)
 
+//In this instance our car frame is North West Up
+#define IMU_ROTATION  90
+#define MAG_ROTATION 180
+
 //Addresses
 #define MPU_9250_ADDRESS 0x68

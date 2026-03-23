@@ -1,5 +1,6 @@
 #pragma once
 
+//Deprecated I believe. Check in on this. 
 enum SaurconState {
     STARTUP_SCON = 0,
     STARTUP_ROS_SCON,
