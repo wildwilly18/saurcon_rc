@@ -1,10 +1,11 @@
 #pragma once
+#include <cstdint>
 
 // Robot operating state machine states
 enum class SaurconState : uint8_t {
     NO_STATE = 0,     // Initial or invalid state
     STARTUP,          // Power-on init
-    STARTUP_ROS,          // ROS2 initialization
+    STARTUP_ROS,      // ROS2 initialization
     SETUP,            // Motor and encoder setup
     STANDBY,          // Startup complete wait for action
     RUN_CONTROL,      // Operation via controller
