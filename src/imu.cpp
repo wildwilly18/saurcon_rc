@@ -18,11 +18,16 @@ bool IMU::begin() {
         //Initialize MPU 6050
         mpu.calcGyroOffsets();
         vTaskDelay(pdMS_TO_TICKS(1000));
-        
-        //Initialize Mag
-        mag.init();
 
-        xTaskCreate(imu_update_task, "imu_update_task", 2048, this, 1, &imuTaskHandle);
+        xTaskCreatePinnedToCore(
+            imu_update_task, 
+            "imu_update_task", 
+            2048, 
+            this, 
+            1, 
+            &imuTaskHandle,
+            1);
+            
     } else {
         imuOk = false;
     }
@@ -41,11 +46,6 @@ void IMU::update() {
         imuData.gx = mpu.getGyroX();
         imuData.gy = mpu.getGyroY();
         imuData.gz = mpu.getGyroZ();
-        
-        mag.read();
-        imuData.mx = mag.getX();
-        imuData.my = mag.getY();
-        imuData.mz = mag.getZ();
 
         xSemaphoreGive(imuDataMutex);
     }
@@ -56,11 +56,11 @@ void IMU::imu_update_task(void *param) {
     IMU* self = static_cast<IMU*>(param);
 
     while (true) {
-        if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(1)) == pdTRUE) {
             self->update();
             xSemaphoreGive(i2cMutex);
         }
-        vTaskDelay(pdMS_TO_TICKS(50)); // Add a delay to avoid busy looping
+        vTaskDelay(pdMS_TO_TICKS(10)); // Add a delay to avoid busy looping
     }    
 }
 
@@ -78,15 +78,6 @@ void IMU::getGyro(float& gx, float& gy, float& gz) {
         gx =  imuData.gy;
         gy = -imuData.gx;
         gz =  imuData.gz;
-        xSemaphoreGive(imuDataMutex);
-    }
-}
-
-void IMU::getMag(float& mx, float& my, float& mz) {
-    if (xSemaphoreTake(imuDataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-        mx = -imuData.mx;
-        my = -imuData.my;
-        mz =  imuData.mz;
         xSemaphoreGive(imuDataMutex);
     }
 }

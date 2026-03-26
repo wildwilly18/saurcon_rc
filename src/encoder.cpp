@@ -3,115 +3,104 @@
 
 Encoder* Encoder::instance = nullptr;
 
-Encoder::Encoder(uint8_t a, uint8_t b, uint8_t c)
-    : pinA(a), pinB(b), pinC(c), last_hall_state(0),
-      motor_position(0), rpm_buffer_index(0), filtered_motor_rpm(0.0f)
+Encoder::Encoder()
 {
-    instance = this;  // Singleton-style for ISR access
-    for (int i = 0; i < RPM_FILTER_SIZE; ++i) rpm_buffer[i] = 0.0f;
+    instance = this;
+
+    // Set up the pulse counter
+    pcnt_config_t pcnt_config = {
+        .pulse_gpio_num = MOT_ENC_1,         // Channel A
+        .ctrl_gpio_num  = MOT_ENC_2,         // Channel B
+        .lctrl_mode     = PCNT_MODE_REVERSE, // Reverse Count direction when B is low
+        .hctrl_mode     = PCNT_MODE_KEEP,    // Keep count directio when B is high
+        .pos_mode       = PCNT_COUNT_DEC,    // Count down on rising edge of A
+        .neg_mode       = PCNT_COUNT_INC,    // Count up on falling edge of A
+        .counter_h_lim  = 32767,
+        .counter_l_lim  = -32768,
+        .unit           = PCNT_UNIT_0,
+        .channel        = PCNT_CHANNEL_0,
+    };
+    pcnt_unit_config(&pcnt_config);
+
+    // Configure channel 1 for full quadrature resoltuion (4x counting)
+    pcnt_config.pulse_gpio_num = MOT_ENC_2;
+    pcnt_config.ctrl_gpio_num  = MOT_ENC_1;
+    pcnt_config.channel        = PCNT_CHANNEL_1;
+    pcnt_config.pos_mode       = PCNT_COUNT_INC; // Swapped
+    pcnt_config.neg_mode       = PCNT_COUNT_DEC; // Swapped
+    pcnt_unit_config(&pcnt_config);
+
+    // Set filter to ignore pulses shorter than 100 APB clock cycles
+    pcnt_set_filter_value(PCNT_UNIT_0, 100);
+    pcnt_filter_enable(PCNT_UNIT_0);
+
+    // Initialize and start counter
+    pcnt_counter_pause(PCNT_UNIT_0);
+    pcnt_counter_clear(PCNT_UNIT_0);
+    pcnt_counter_resume(PCNT_UNIT_0);
 }
 
 void Encoder::begin() {
-    pinMode(pinA, INPUT_PULLUP);
-    pinMode(pinB, INPUT_PULLUP);
-    pinMode(pinC, INPUT_PULLUP);
+    enc_data_mutex = xSemaphoreCreateMutex();
 
-    dt_queue = xQueueCreate(10, sizeof(uint32_t));
-    data_mutex = xSemaphoreCreateMutex();
-
-    attachInterrupt(digitalPinToInterrupt(pinA), isrWrapperA, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(pinB), isrWrapperB, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(pinC), isrWrapperC, CHANGE);
-
-    xTaskCreatePinnedToCore(rpmFilterTask, "encoder_rpm_filter", 4096, this, 1, NULL, 1);
+    // Initialize Encode task
+    xTaskCreatePinnedToCore(
+        enc_update_task, 
+        "enc_update_task", 
+        2048, 
+        this, 
+        1, 
+        &encTaskHandle,
+        1);
 }
 
-float Encoder::getFilteredRPM() {
-    if (xSemaphoreTake(data_mutex, pdMS_TO_TICKS(10))) {
-        float val = filtered_motor_rpm;
-        xSemaphoreGive(data_mutex);
-        return val;
-    }
-    return 0.0f;
-}
+void Encoder::enc_update_task(void *param){
+    Encoder* self = static_cast<Encoder*>(param);
 
-int Encoder::getPosition() {
-    return motor_position;
-}
-
-void Encoder::getWheelInfo(float &ang_speed, float &lin_speed, float &dist_traveled) {
-    if (xSemaphoreTake(data_mutex, pdMS_TO_TICKS(10))) {
-        ang_speed = wheel_angular_speed;
-        lin_speed = wheel_linear_speed;
-        dist_traveled = wheel_distance_traveled;
-    }
-    return;
-}
-
-void Encoder::resetDistanceTraveled() {
-    if (xSemaphoreTake(data_mutex, pdMS_TO_TICKS(10))) {
-        wheel_distance_traveled = 0.0f;
-    }
-}
-
-void Encoder::isrWrapperA() { if (instance) instance->handleISR(); }
-void Encoder::isrWrapperB() { if (instance) instance->handleISR(); }
-void Encoder::isrWrapperC() { if (instance) instance->handleISR(); }
-
-void Encoder::handleISR() {
-    unsigned long now = micros();
-    uint8_t a = digitalRead(pinA);
-    uint8_t b = digitalRead(pinB);
-    uint8_t c = digitalRead(pinC);
-    uint8_t hall_state = (a << 2) | (b << 1) | c;
-
-    if (hall_state != last_hall_state) {
-        motor_direction = transition_table[last_hall_state][hall_state];
-
-        uint32_t dt = now - last_transition_time;
-        last_transition_time = now;
-        last_hall_state = hall_state;
-
-        BaseType_t hp_task_woken = pdFALSE;
-        xQueueSendFromISR(dt_queue, &dt, &hp_task_woken);
-        if (hp_task_woken) portYIELD_FROM_ISR();
-    }
-}
-
-void Encoder::rpmFilterTask(void* pvParams) {
-    Encoder* self = static_cast<Encoder*>(pvParams);
-    uint32_t dt;
-
-    while (true) {
-        if (xQueueReceive(self->dt_queue, &dt, pdMS_TO_TICKS(100))) {
-            float raw_rpm = (dt > 0) ? (60.0f * 1000000.0f) / (dt * ENCODER_TICKS_PER_REV) : 0.0f;
-            float dt_sec = dt/1000000.0f;
-            self->rpm_buffer[self->rpm_buffer_index++] = raw_rpm * static_cast<float>(self->motor_direction);
-            self->rpm_buffer_index %= RPM_FILTER_SIZE;
-
-            float sum = 0.0f;
-            for (int i = 0; i < RPM_FILTER_SIZE; ++i) sum += self->rpm_buffer[i];
-            float avg = sum / RPM_FILTER_SIZE;
-
-            if (xSemaphoreTake(self->data_mutex, pdMS_TO_TICKS(10))) {
-                self->filtered_motor_rpm = avg;
-                self->wheel_rpm = avg / GEAR_RATIO;
-                self->wheel_angular_speed = self->wheel_rpm * 2.0f * M_PI / 60.0f;
-                self->wheel_linear_speed  = self->wheel_angular_speed * WHEEL_RADIUS;
-                self->wheel_distance_traveled += (self->wheel_linear_speed * dt_sec);
-                xSemaphoreGive(self->data_mutex);
-            }
-        } else {
-            // This acts to clear rpm filter for 0 speed
-            for (int i = 0; i < RPM_FILTER_SIZE; ++i) self->rpm_buffer[i] = 0.0f;
-            if (xSemaphoreTake(self->data_mutex, pdMS_TO_TICKS(10))) {
-                self->filtered_motor_rpm  = 0.0f;
-                self->wheel_rpm = 0.0f;
-                self->wheel_angular_speed = 0.0f;
-                self->wheel_linear_speed = 0.0f;
-                self->wheel_distance_traveled = self->wheel_distance_traveled;
-                xSemaphoreGive(self->data_mutex);
-            }
+    while(true){
+        if(xSemaphoreTake(self->enc_data_mutex, pdMS_TO_TICKS(1)) == pdTRUE){
+            self->update();
+            xSemaphoreGive(self->enc_data_mutex);
         }
+        vTaskDelay(pdMS_TO_TICKS(10)); // Add a delay to avoid busy loops
     }
+}
+
+void Encoder::update(){
+    // Update Loop. Mutex protected
+    int16_t current_enc_cnt{0};
+    pcnt_get_counter_value(PCNT_UNIT_0, &current_enc_cnt);
+
+    uint32_t current_time_ms = pdTICKS_TO_MS(xTaskGetTickCount());
+
+    float hall_rpm{0};
+    float linear_speed{0.0};
+
+    if(last_time_ms_ > 0){
+        // Calculate the time difference
+        uint32_t dt = current_time_ms - last_time_ms_;
+        if(dt == 0) return;
+
+        int32_t delta_counts = (int32_t)current_enc_cnt - (int32_t)enc_count_prev;
+
+        //Handle Integer wrap
+        if(enc_count_prev > 16000 && delta_counts < -16000){
+            delta_counts = (32767 - (int32_t)enc_count_prev) + 1 + (int32_t)current_enc_cnt;
+        }
+
+        else if(enc_count_prev < -16000 && delta_counts > 16000){
+            delta_counts = (-32768 - (int32_t)enc_count_prev) - 1 + (int32_t)current_enc_cnt;
+        }
+        
+        hall_rpm = (delta_counts * 60000.0f) / (ENCODER_TICKS_PER_REV * (float)dt);
+    }
+
+    // Linear Speed
+    linear_speed = (hall_rpm * 3.14159265358979323846f * WHEEL_RADIUS) / 60.0f;
+
+    wheel_rpm = hall_rpm;
+    wheel_linear_speed = linear_speed;
+    
+    enc_count_prev = current_enc_cnt;
+    last_time_ms_ = current_time_ms;
 }

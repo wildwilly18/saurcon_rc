@@ -10,6 +10,7 @@ Servo SteerServo;
 
 SaurconState localState;
 
+
 //Initialize control queue to handle to queue commands. 
 QueueHandle_t controlQueue = xQueueCreate(10, sizeof(ControlCommand));
 
@@ -18,8 +19,8 @@ void task_motion_control(void *pv){
     uint32_t servo_angle        = 90;
     uint32_t servo_angle_mapped = 90;
 
-    uint32_t throttle        = 1500;
-    uint32_t throttle_mapped = 1500;
+    int32_t throttle        = 0;
+    int32_t throttle_mapped = 0;
 
     while(true){
         // after done, transition to SETUP
@@ -84,51 +85,17 @@ void init_servo()
 
 void init_throttle()
 {
-    ledcSetup(ESC_CHANNEL, ESC_FREQ, ESC_RES_BITS);
-    ledcAttachPin(ESC_PIN, ESC_CHANNEL);
+    //Setup here for the Dual H Bridge Motor Control
+    pinMode(MOT_ENABLE, OUTPUT);
+    pinMode(MOT_1, OUTPUT);
+    pinMode(MOT_2, OUTPUT);
+    
+    digitalWrite(MOT_1, LOW);
+    digitalWrite(MOT_2, LOW);
+    analogWrite(MOT_ENABLE, 0);
 
-    digitalWrite(LED_RED, HIGH);
+    digitalWrite(LED_RED, LOW);
     digitalWrite(LED_GRN, HIGH);
-
-    float motor_rpm = 0;
-
-    // Check if already spinning before attempting calibration
-    motor_rpm = encoder->getFilteredRPM();
-
-    if (fabs(motor_rpm) > 10.0) {
-        // ESC already armed or spinning — skip calibration
-        return;
-    }
-
-    // STEP 1A: Send some throttle and monitor RPM
-    set_throttle(1600);
-
-    const int check_duration_ms = 1000;
-    const int sample_interval_ms = 10;
-    const int max_checks = check_duration_ms / sample_interval_ms;
-
-    for (int i = 0; i < max_checks; ++i) {
-        motor_rpm = encoder->getFilteredRPM();
-
-        if (fabs(motor_rpm) > 10.0) {
-            // Motor responded — assume ESC already calibrated
-            set_throttle(1500);
-            return;
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(sample_interval_ms));
-    }
-
-    // STEP 1B: Send FULL throttle
-    set_throttle(2000);
-    vTaskDelay(pdMS_TO_TICKS(4000));
-
-    // STEP 2: Send MIN throttle
-    set_throttle(1000);
-    vTaskDelay(pdMS_TO_TICKS(4000));
-
-    // STEP 3: Neutral throttle to finish
-    set_throttle(1500);
 }
 
 void set_servo(uint32_t angle)
@@ -138,29 +105,29 @@ void set_servo(uint32_t angle)
     SteerServo.write(steer_angle);
 }
 
-void set_throttle(uint32_t throttle)
+void set_throttle(int32_t throttle)
 {
-    uint32_t throttle_set = max(MIN_ESC_PWM, throttle);
-    throttle_set = min(MAX_ESC_PWM, throttle_set);
-    throttle_set = min(MAX_ESC_PWM, throttle_set);
+    // Use abs() for PWM magnitude, preserve sign for direction
+    uint8_t throttle_value = (uint8_t)min((int32_t)THROTTLE_MAX, abs(throttle));
 
-    //write us
-    write_esc_us(throttle_set);
+    if(throttle >= 0){
+        digitalWrite(MOT_1, LOW);
+        digitalWrite(MOT_2, HIGH);
+        analogWrite(MOT_ENABLE, throttle_value);
+    } else {
+        digitalWrite(MOT_1, HIGH);
+        digitalWrite(MOT_2, LOW);
+        analogWrite(MOT_ENABLE, throttle_value);
+    }
 }
 
-uint32_t map_throttle(float speed)
+int32_t map_throttle(float speed)
 {
     // Clamp input to [-1.0, 1.0]
     speed = constrain(speed, -1.0f, 1.0f);
-    uint32_t mapped_throttle;
 
-    if (speed > 0.0f) {
-        mapped_throttle = (uint32_t)(1500 + speed * (MAX_RUN_ESC_PWM - 1500));
-    } else {
-        mapped_throttle = (uint32_t)(1500 + speed * (1500 - MIN_RUN_ESC_PWM));
-    }
-
-    return mapped_throttle;
+    // Preserve sign for direction control in set_throttle()
+    return (int32_t)(speed * THROTTLE_MAX);
 }
 
 uint32_t map_steering(float steerValue)
@@ -170,10 +137,4 @@ uint32_t map_steering(float steerValue)
 
     // Map to [180, 0]
     return (uint32_t)((1.0f - steerValue) * 90.0f);  // (-1 maps to 180, 0 to 90, 1 to 0)
-}
-
-void write_esc_us(uint32_t microseconds){
-    // Convert microseconds to 16-bit duty (50Hz = 20,000 us period)
-    uint32_t duty = microseconds * 65535 / 20000;
-    ledcWrite(ESC_CHANNEL, duty);
 }

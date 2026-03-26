@@ -21,8 +21,13 @@ StateMachine::StateMachine() {
     display.init();
     display.startTask();
 
+    // Start the IMU
     imu = new IMU();
     imu->begin();
+
+    // Start the encoder
+    encoder = new Encoder();
+    encoder->begin();
 
     led.init();
 }
@@ -168,7 +173,7 @@ void StateMachine::onEnter_STARTUP_ROS() {
             NULL, 
             3, 
             &ros_control_subscriber_task_handle,
-            1);
+            0);
     }
 
     if (!ros_state_subscriber_task_handle) {
@@ -183,13 +188,14 @@ void StateMachine::onEnter_STARTUP_ROS() {
     }
 
     if(!ros_sensor_publisher_task_handle){
-        xTaskCreate(
+        xTaskCreatePinnedToCore(
             ros_sensor_publisher_task, 
             "ros_sensor_publisher_task", 
             4096, 
             NULL, 
             2, 
-            &ros_sensor_publisher_task_handle);
+            &ros_sensor_publisher_task_handle,
+            0);
     }
 
     if(!ros_state_publisher_task_handle){
@@ -215,19 +221,17 @@ void StateMachine::onEnter_SETUP() {
     display.setState(SETUP_DISPLAY);
     setRequestedState(SaurconState::STANDBY);
 
-    encoder = new Encoder(A_PIN, B_PIN, C_PIN);
-    encoder->begin();
-
     init_pwm();
     init_servo();
     init_throttle();
-    xTaskCreate(
+    xTaskCreatePinnedToCore(
         task_motion_control, 
         "task_motion_control", 
         2048, 
         NULL, 
         1, 
-        NULL);
+        NULL,
+        1);
 
 }
 

@@ -1,20 +1,23 @@
 #pragma once
 
-// Servo Out Pin
-#define ESC_PIN    19
-#define SERVO_PIN  18
+// Servo Pin
+#define SERVO_PIN  23
+
+// H Bridge Motor Pins
+#define MOT_ENABLE 27
+#define MOT_1      26
+#define MOT_2      25
+
+// Pins for Encoder
+#define MOT_ENC_1 33
+#define MOT_ENC_2 32
 
 //Pins for LED
-#define LED_RED 25
-#define LED_GRN 33
-#define LED_YEL 32
+#define LED_RED 19
+#define LED_GRN  5
+#define LED_YEL 18
 #define LED_PIN 13
 #define LED_BUILTIN 2
-
-//Pins for hall sensor
-#define A_PIN 13
-#define B_PIN 12
-#define C_PIN 14
 
 //Pins to monitor current
 #define I_in_1 A9

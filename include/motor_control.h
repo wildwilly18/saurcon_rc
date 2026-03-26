@@ -24,6 +24,9 @@ using namespace std;
 #define STEER_MIN (uint32_t)45
 #define STEER_MAX (uint32_t)135
 
+#define THROTTLE_MAX (int32_t)255
+#define THROTTLE_MIN (int32_t)0
+
 extern QueueHandle_t controlQueue;
 
 extern Servo SteerServo;
@@ -34,8 +37,7 @@ void init_servo();
 void set_servo(uint32_t angle);
 
 void init_throttle();
-void set_throttle(uint32_t throttle);
-void write_esc_us(uint32_t microseconds);
+void set_throttle(int32_t throttle);
 
-uint32_t map_throttle(float speed);
+int32_t map_throttle(float speed);
 uint32_t map_steering(float steerValue);

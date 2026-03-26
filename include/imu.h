@@ -22,17 +22,14 @@ public:
 
     void getAccel(float& ax, float& ay, float& az);
     void getGyro(float& gx, float& gy, float& gz);
-    void getMag(float& mx, float& my, float& mz);
 
 private:
     MPU6050 mpu;
-    QMC5883LCompass mag;
     SemaphoreHandle_t imuDataMutex;
 
     struct {
         float ax, ay, az;
         float gx, gy, gz;
-        float mx, my, mz;
     } imuData;
 
     TaskHandle_t imuTaskHandle = nullptr;

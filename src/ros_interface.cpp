@@ -60,8 +60,8 @@ void init_ROS(){
         ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
         "ctrl_output"));
 
-    //create a state request subscriber with best-effort Qos
-    RCCHECK(rclc_subscription_init_best_effort(
+    //create a state request subscriber with reliable Qos
+    RCCHECK(rclc_subscription_init_default(
       &rc_state_subscriber,
       &node,
       ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, UInt8),
@@ -202,6 +202,7 @@ void ros_state_publisher_task(void *pvParameters)
     vTaskDelay(pdMS_TO_TICKS(20));
   }
 }
+
 // uRos Sensor Publish Task
 void ros_sensor_publisher_task(void *pvParameters)
 {
@@ -210,12 +211,10 @@ void ros_sensor_publisher_task(void *pvParameters)
 
     float ax, ay, az;
     float gx, gy, gz;
-    float mx, my, mz;
     float qx, qy, qz, qw;
 
     imu->getAccel(ax, ay, az);
     imu->getGyro(gx, gy, gz);
-    imu->getMag(mx, my, mz);
 
     //Fill in the imu message
     fill_msg_header(msg_imu.header, "base_link");
@@ -244,20 +243,7 @@ void ros_sensor_publisher_task(void *pvParameters)
       msg_imu.orientation_covariance[i] = -1.0;
     }
 
-    //Fill in the Mag message
-    fill_msg_header(msg_mag.header, "base_link");
-
-    msg_mag.magnetic_field.x = mx;
-    msg_mag.magnetic_field.y = my;
-    msg_mag.magnetic_field.z = mz;
-
-    for (int i = 0; i < 9; i++) {
-      msg_mag.magnetic_field_covariance[i] = -1.0;
-    }
-
-
     rcl_ret_t rc_imu = rcl_publish(&imu_pub, &msg_imu, NULL);
-    rcl_ret_t rc_mag = rcl_publish(&mag_pub, &msg_mag, NULL);
 
     vTaskDelay(pdMS_TO_TICKS(20)); //Delay 10ms for 100hz 
   }

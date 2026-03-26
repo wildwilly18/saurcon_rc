@@ -74,7 +74,7 @@ void DisplayManager::display_update_task(void *pvParameters) {
 
                 case ENCODER_DISPLAY:
                     float ang_spd, lin_spd, dist;
-                    encoder->getWheelInfo(ang_spd, lin_spd, dist);
+                    //encoder->getWheelInfo(ang_spd, lin_spd, dist);
 
                     sprintf(display->formattedRPM, "%03.4f", ang_spd);
                     sprintf(display->formattedVEL, "%03.4f", lin_spd);
